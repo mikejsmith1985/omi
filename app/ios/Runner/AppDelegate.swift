@@ -150,6 +150,15 @@ final class QuickActionsIconPatcher: NSObject {
           PhoneMicHostApiSetup.setUp(binaryMessenger: messenger, api: PhoneMicHostApiImpl(controller: controller))
       }
 
+      // Audio-file import — Pigeon APIs.
+      // The decoder turns a chosen recording into the 16 kHz mono PCM16 the
+      // transcription pipeline expects; device conditions let a backlog pause
+      // itself on low battery or heat rather than flattening the phone.
+      if let messenger = (window?.rootViewController as? FlutterViewController)?.binaryMessenger {
+          AudioDecoderHostApiSetup.setUp(binaryMessenger: messenger, api: AudioDecoderPlugin())
+          DeviceConditionsHostApiSetup.setUp(binaryMessenger: messenger, api: DeviceConditionsPlugin())
+      }
+
       // Retrieve the link from parameters
     if let url = AppLinks.shared.getLink(launchOptions: launchOptions) {
       // We have a link, propagate it to your Flutter app or not
