@@ -12,7 +12,6 @@
 /// memory bound this feature is built around (SC-005).
 library;
 
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';

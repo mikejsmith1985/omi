@@ -36,7 +36,6 @@ void _identityMarksTheImport() {
       expect(source.deviceId, source.deviceId);
     });
   });
-
 }
 
 /// The frame size must not drift from the one the pipeline pins.
@@ -49,7 +48,6 @@ void _frameSizeMatchesPipeline() {
       expect(FileImportSource.frameSize, PhoneMicSource.frameSize);
     });
   });
-
 }
 
 /// The pump reads this to know whether a flush is still owed.
@@ -84,7 +82,6 @@ void _bufferedCountIsAccurate() {
       expect(source.bufferedByteCount, 0);
     });
   });
-
 }
 
 /// A retained remainder shows here long before it shows as a memory failure.

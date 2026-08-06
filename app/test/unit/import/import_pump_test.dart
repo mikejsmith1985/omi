@@ -68,7 +68,7 @@ class _FakePressure implements MemoryPressureSignal {
 }
 
 /// Builds a pump with a poll interval short enough that tests stay fast.
-ImportPump buildPump(
+ImportPump _buildPump(
   _FakeSink sink,
   _FakeDecoder decoder, {
   int? boundBytes,
@@ -96,7 +96,7 @@ void _backsOffUnderMemoryPressure() {
 Future<int> _queuedAfterFilling(int bound, MemoryPressureSignal? signal) async {
   final sink = _FakeSink();
   final decoder = _FakeDecoder(totalBytes: pipelineBytesPerSecond * 60);
-  final pump = buildPump(sink, decoder, boundBytes: bound, pressure: signal);
+  final pump = _buildPump(sink, decoder, boundBytes: bound, pressure: signal);
   final cancellation = ImportCancellation();
 
   final run = pump.run(cancellation: cancellation);
@@ -121,32 +121,31 @@ void _holdsLessInFlightUnderPressure() {
 /// Backing off must mean slower, never stuck.
 void _stillFinishesUnderPressure() {
   test('never shrinks below a floor, so the import still finishes', () async {
-      final sink = _FakeSink();
-      final decoder = _FakeDecoder(totalBytes: pipelineBytesPerSecond * 3);
-      final pump = buildPump(
-        sink,
-        decoder,
-        boundBytes: pipelineBytesPerSecond * 2,
-        pressure: _FakePressure()..underPressure = true,
-      );
+    final sink = _FakeSink();
+    final decoder = _FakeDecoder(totalBytes: pipelineBytesPerSecond * 3);
+    final pump = _buildPump(
+      sink,
+      decoder,
+      boundBytes: pipelineBytesPerSecond * 2,
+      pressure: _FakePressure()..underPressure = true,
+    );
 
-      var isRunning = true;
-      Future<void> drainLoop() async {
-        while (isRunning) {
-          sink.drain();
-          await Future<void>.delayed(const Duration(milliseconds: 1));
-        }
+    var isRunning = true;
+    Future<void> drainLoop() async {
+      while (isRunning) {
+        sink.drain();
+        await Future<void>.delayed(const Duration(milliseconds: 1));
       }
+    }
 
-      final draining = drainLoop();
-      final result = await pump.run(cancellation: ImportCancellation());
-      isRunning = false;
-      await draining;
+    final draining = drainLoop();
+    final result = await pump.run(cancellation: ImportCancellation());
+    isRunning = false;
+    await draining;
 
-      // Backing off must mean slower, never stuck.
-      expect(result.outcome, PumpOutcome.completed);
-      expect(decoder.served, decoder.totalBytes);
-    });
+    // Backing off must mean slower, never stuck.
+    expect(result.outcome, PumpOutcome.completed);
+    expect(decoder.served, decoder.totalBytes);
   });
 }
 
@@ -162,71 +161,69 @@ void _audioInFlightStaysBounded() {
 /// The core of P-1: a full pipeline must stop the pump, not merely slow it.
 void _stopsFeedingAtTheBound() {
   test('stops feeding once the bound is reached', () async {
-      final sink = _FakeSink();
-      // Ten seconds of audio against a one-second bound: without pacing the pump would
-      // hand over all of it before anything was transcribed.
-      final decoder = _FakeDecoder(totalBytes: pipelineBytesPerSecond * 10);
-      final pump = buildPump(sink, decoder, boundBytes: pipelineBytesPerSecond);
-      final cancellation = ImportCancellation();
+    final sink = _FakeSink();
+    // Ten seconds of audio against a one-second bound: without pacing the pump would
+    // hand over all of it before anything was transcribed.
+    final decoder = _FakeDecoder(totalBytes: pipelineBytesPerSecond * 10);
+    final pump = _buildPump(sink, decoder, boundBytes: pipelineBytesPerSecond);
+    final cancellation = ImportCancellation();
 
-      final run = pump.run(cancellation: cancellation);
-      // Let it fill, then stop it without ever draining.
-      await Future<void>.delayed(const Duration(milliseconds: 30));
-      final queuedWhileBlocked = sink.queuedBytes;
-      cancellation.cancel();
-      await run;
+    final run = pump.run(cancellation: cancellation);
+    // Let it fill, then stop it without ever draining.
+    await Future<void>.delayed(const Duration(milliseconds: 30));
+    final queuedWhileBlocked = sink.queuedBytes;
+    cancellation.cancel();
+    await run;
 
-      expect(queuedWhileBlocked, lessThanOrEqualTo(pipelineBytesPerSecond + FileImportSource.frameSize));
-      expect(decoder.served, lessThan(decoder.totalBytes));
-    });
-
+    expect(queuedWhileBlocked, lessThanOrEqualTo(pipelineBytesPerSecond + FileImportSource.frameSize));
+    expect(decoder.served, lessThan(decoder.totalBytes));
+  });
 }
 
 /// Bounded must not mean stuck: draining has to let the import continue.
 void _resumesOnceDrained() {
   test('resumes as soon as the pipeline drains', () async {
-      final sink = _FakeSink();
-      final decoder = _FakeDecoder(totalBytes: pipelineBytesPerSecond * 4);
-      final pump = buildPump(sink, decoder, boundBytes: pipelineBytesPerSecond);
+    final sink = _FakeSink();
+    final decoder = _FakeDecoder(totalBytes: pipelineBytesPerSecond * 4);
+    final pump = _buildPump(sink, decoder, boundBytes: pipelineBytesPerSecond);
 
-      // Drain continuously, as a working transcription pipeline would.
-      var isRunning = true;
-      Future<void> drainLoop() async {
-        while (isRunning) {
-          sink.drain();
-          await Future<void>.delayed(const Duration(milliseconds: 1));
-        }
+    // Drain continuously, as a working transcription pipeline would.
+    var isRunning = true;
+    Future<void> drainLoop() async {
+      while (isRunning) {
+        sink.drain();
+        await Future<void>.delayed(const Duration(milliseconds: 1));
       }
+    }
 
-      final draining = drainLoop();
-      final result = await pump.run(cancellation: ImportCancellation());
-      isRunning = false;
-      await draining;
+    final draining = drainLoop();
+    final result = await pump.run(cancellation: ImportCancellation());
+    isRunning = false;
+    await draining;
 
-      expect(result.outcome, PumpOutcome.completed);
-      expect(decoder.served, decoder.totalBytes);
-    });
-
+    expect(result.outcome, PumpOutcome.completed);
+    expect(decoder.served, decoder.totalBytes);
+  });
 }
 
 /// A running pass holds audio the buffer no longer reports; the bound must count it.
 void _reservesBudgetForARunningPass() {
   test('reserves budget for a pass that is already running', () async {
-      final sink = _FakeSink()..transcribing = true;
-      final decoder = _FakeDecoder(totalBytes: pipelineBytesPerSecond * 10);
-      final pump = buildPump(sink, decoder, boundBytes: pipelineBytesPerSecond);
-      final cancellation = ImportCancellation();
+    final sink = _FakeSink()..transcribing = true;
+    final decoder = _FakeDecoder(totalBytes: pipelineBytesPerSecond * 10);
+    final pump = _buildPump(sink, decoder, boundBytes: pipelineBytesPerSecond);
+    final cancellation = ImportCancellation();
 
-      final run = pump.run(cancellation: cancellation);
-      await Future<void>.delayed(const Duration(milliseconds: 30));
-      final queued = sink.queuedBytes;
-      cancellation.cancel();
-      await run;
+    final run = pump.run(cancellation: cancellation);
+    await Future<void>.delayed(const Duration(milliseconds: 30));
+    final queued = sink.queuedBytes;
+    cancellation.cancel();
+    await run;
 
-      // Half the budget, because the running pass holds a chunk the buffer no longer
-      // reports. Allowing the full budget would exceed the bound by one chunk in the
-      // case that happens most of the time.
-      expect(queued, lessThanOrEqualTo(pipelineBytesPerSecond ~/ 2 + FileImportSource.frameSize));
+    // Half the budget, because the running pass holds a chunk the buffer no longer
+    // reports. Allowing the full budget would exceed the bound by one chunk in the
+    // case that happens most of the time.
+    expect(queued, lessThanOrEqualTo(pipelineBytesPerSecond ~/ 2 + FileImportSource.frameSize));
   });
 }
 
@@ -236,7 +233,7 @@ void _progressFollowsAudio() {
     test('reports seconds of audio fed, not seconds elapsed', () async {
       final sink = _FakeSink();
       final decoder = _FakeDecoder(totalBytes: pipelineBytesPerSecond * 3);
-      final pump = buildPump(sink, decoder, boundBytes: pipelineBytesPerSecond * 100);
+      final pump = _buildPump(sink, decoder, boundBytes: pipelineBytesPerSecond * 100);
       final reported = <double>[];
 
       final result = await pump.run(
@@ -250,7 +247,6 @@ void _progressFollowsAudio() {
       expect(reported, equals(List.of(reported)..sort()));
     });
   });
-
 }
 
 /// The final partial frame must survive; losing it clips the last word.
@@ -260,7 +256,7 @@ void _tailIsNotLost() {
       final sink = _FakeSink();
       // Deliberately not a multiple of the frame size, so a tail is left over.
       final decoder = _FakeDecoder(totalBytes: FileImportSource.frameSize * 4 + 100, chunkSize: 500);
-      final pump = buildPump(sink, decoder, boundBytes: pipelineBytesPerSecond * 100);
+      final pump = _buildPump(sink, decoder, boundBytes: pipelineBytesPerSecond * 100);
 
       await pump.run(cancellation: ImportCancellation());
 
@@ -272,14 +268,13 @@ void _tailIsNotLost() {
     test('emits no tail frame when the recording ends on a boundary', () async {
       final sink = _FakeSink();
       final decoder = _FakeDecoder(totalBytes: FileImportSource.frameSize * 4, chunkSize: 320);
-      final pump = buildPump(sink, decoder, boundBytes: pipelineBytesPerSecond * 100);
+      final pump = _buildPump(sink, decoder, boundBytes: pipelineBytesPerSecond * 100);
 
       await pump.run(cancellation: ImportCancellation());
 
       expect(sink.received.length, 4);
     });
   });
-
 }
 
 /// Cancelling must stop promptly and report honestly what was fed.
@@ -288,7 +283,7 @@ void _cancellationStopsPromptly() {
     test('stops promptly and reports what was fed', () async {
       final sink = _FakeSink();
       final decoder = _FakeDecoder(totalBytes: pipelineBytesPerSecond * 100);
-      final pump = buildPump(sink, decoder, boundBytes: pipelineBytesPerSecond * 1000);
+      final pump = _buildPump(sink, decoder, boundBytes: pipelineBytesPerSecond * 1000);
       final cancellation = ImportCancellation()..cancel();
 
       final result = await pump.run(cancellation: cancellation);

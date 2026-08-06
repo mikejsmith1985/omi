@@ -109,8 +109,7 @@ class ImportRegistry {
   ImportRegistry() : _openPreferences = SharedPreferences.getInstance;
 
   /// Creates a registry over supplied preferences, for tests.
-  ImportRegistry.withPreferences(SharedPreferences preferences)
-      : _openPreferences = (() async => preferences);
+  ImportRegistry.withPreferences(SharedPreferences preferences) : _openPreferences = (() async => preferences);
 
   /// The recording already imported under [contentHash], or null if there is none.
   Future<ImportedRecording?> findByContentHash(String contentHash) async {

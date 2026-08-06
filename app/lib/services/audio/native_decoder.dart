@@ -16,8 +16,6 @@
 /// and reintroduce the unbounded-memory failure SC-005 exists to prevent.
 library;
 
-import 'dart:typed_data';
-
 import 'package:flutter/services.dart';
 import 'package:omi/gen/audio_decoder_pigeon.g.dart';
 import 'package:omi/services/import/import_failures.dart';

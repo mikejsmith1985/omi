@@ -117,7 +117,7 @@ const int _wavHeaderLength = 44;
 /// Wraps raw PCM16 in the WAV header the pipeline's sample rate implies.
 Uint8List _wrapInWavHeader(Uint8List pcmBytes) {
   final header = ByteData(_wavHeaderLength);
-  final byteRate = fixtureSampleRate * fixtureChannelCount * fixtureBytesPerSample;
+  const byteRate = fixtureSampleRate * fixtureChannelCount * fixtureBytesPerSample;
 
   _writeAscii(header, 0, 'RIFF');
   header.setUint32(4, _wavHeaderLength - 8 + pcmBytes.length, Endian.little);

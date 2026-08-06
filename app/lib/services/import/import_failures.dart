@@ -74,7 +74,7 @@ ImportFailure alreadyImportedRecording(String previousName) => ImportFailure(
     );
 
 /// The recording has no length.
-ImportFailure emptyRecording() => ImportFailure(
+ImportFailure emptyRecording() => const ImportFailure(
       whatHappened: 'This recording is empty.',
       whatToDo: 'Pick a different file — there is nothing in this one to transcribe.',
       code: 'recording_empty',
@@ -84,7 +84,7 @@ ImportFailure emptyRecording() => ImportFailure(
 ///
 /// Distinct from [emptyRecording] because the user's next step differs: this file has
 /// audio in it, so the useful advice is about what kind of audio (FR-011).
-ImportFailure noSpeechFound() => ImportFailure(
+ImportFailure noSpeechFound() => const ImportFailure(
       whatHappened: 'We could not find any speech in this recording.',
       whatToDo: 'If it should contain talking, the audio may be too quiet or too noisy '
           'to transcribe. Try a recording made closer to the speaker.',
@@ -92,7 +92,7 @@ ImportFailure noSpeechFound() => ImportFailure(
     );
 
 /// The platform decoder failed to start.
-ImportFailure decoderUnavailable() => ImportFailure(
+ImportFailure decoderUnavailable() => const ImportFailure(
       whatHappened: 'The phone could not start decoding this recording.',
       whatToDo: 'Close other apps that may be playing or recording audio, then try again.',
       code: 'decoder_init_failed',
@@ -111,7 +111,7 @@ ImportFailure importInterrupted(String fileName) => ImportFailure(
     );
 
 /// The device ran short of memory during a long import.
-ImportFailure ranOutOfMemory() => ImportFailure(
+ImportFailure ranOutOfMemory() => const ImportFailure(
       whatHappened: 'The phone ran short of memory part-way through this import.',
       whatToDo: 'Close some other apps and start the import again. Nothing was saved.',
       code: 'out_of_memory',
@@ -137,7 +137,7 @@ ImportFailure notEnoughStorage({required int requiredBytes}) {
 ///
 /// Live capture wins, always — a background job must never degrade the conversation
 /// the user is actually having (FR-021).
-ImportFailure liveRecordingInProgress() => ImportFailure(
+ImportFailure liveRecordingInProgress() => const ImportFailure(
       whatHappened: 'Omi is recording right now, so the import has not started.',
       whatToDo: 'It will begin on its own once the recording finishes.',
       code: 'live_recording_in_progress',

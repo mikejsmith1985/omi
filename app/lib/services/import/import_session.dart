@@ -149,7 +149,7 @@ class ImportSession {
     if (result.outcome == PumpOutcome.cancelled) {
       await host.abandonImportCapture();
       job.cancel(at: DateTime.now());
-      return ImportOutcome(stage: ImportStage.cancelled);
+      return const ImportOutcome(stage: ImportStage.cancelled);
     }
     return _closeIntoConversation(job);
   }

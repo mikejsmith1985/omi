@@ -216,11 +216,21 @@ class ImportPump {
   /// finishes, which is the outcome the user wants; without it the system reclaims
   /// memory by killing the app, which is the outcome nobody wants (FR-009, and User
   /// Story 2's fourth acceptance scenario).
+  ///
+  /// The floor guards **only** the memory-pressure reduction, and never rises above
+  /// what is already allowed. Applying it to the total instead silently cancelled the
+  /// in-flight reservation whenever the configured bound was near one second — the
+  /// reservation was computed and then clamped straight back up again. Caught by
+  /// `_reservesBudgetForARunningPass`.
   bool _isPipelineFull() {
     var allowance = maxAudioInFlightBytes;
     if (sink.isTranscribing) allowance ~/= 2;
-    if (memoryPressure.isUnderPressure) allowance ~/= memoryPressureDivisor;
-    return sink.bytesAwaitingTranscription >= allowance.clamp(minimumAllowanceBytes, maxAudioInFlightBytes);
+
+    if (memoryPressure.isUnderPressure) {
+      final floor = allowance < minimumAllowanceBytes ? allowance : minimumAllowanceBytes;
+      allowance = (allowance ~/ memoryPressureDivisor).clamp(floor, allowance);
+    }
+    return sink.bytesAwaitingTranscription >= allowance;
   }
 
   /// Emits the final partial frame, if the recording did not end on a frame boundary.

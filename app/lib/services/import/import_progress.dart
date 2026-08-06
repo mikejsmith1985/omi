@@ -108,9 +108,8 @@ class ImportProgressEstimator {
     if (wallDelta <= 0 || audioDelta <= 0) return;
 
     final observed = audioDelta / wallDelta;
-    _smoothedRate = _smoothedRate == null
-        ? observed
-        : _smoothedRate! * rateSmoothingFactor + observed * (1 - rateSmoothingFactor);
+    _smoothedRate =
+        _smoothedRate == null ? observed : _smoothedRate! * rateSmoothingFactor + observed * (1 - rateSmoothingFactor);
   }
 
   /// Projects the time left, or null while an estimate would be untrustworthy.
