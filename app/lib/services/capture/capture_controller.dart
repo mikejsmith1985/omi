@@ -1882,6 +1882,53 @@ class CaptureController extends ChangeNotifier
     }
   }
 
+  /// Whether a capture session is running that an audio-file import must not disturb.
+  ///
+  /// Exposed for the file-import path, which yields to live capture rather than
+  /// competing with it: a background job must never degrade the conversation the user
+  /// is actually having.
+  bool get isLiveCaptureActive =>
+      recordingState == RecordingState.record ||
+      recordingState == RecordingState.initialising ||
+      recordingState == RecordingState.interrupted ||
+      recordingState == RecordingState.systemAudioRecord;
+
+  /// Makes [source] the active audio source for a file import.
+  ///
+  /// A file import drives the same pipeline live capture does — the frames it produces
+  /// are byte-identical to the phone microphone's — so it needs the same wiring rather
+  /// than a parallel one. This exists because that wiring is private, and a second copy
+  /// of it would be a second thing to keep in step.
+  ///
+  /// Returns false when live capture is already running, in which case nothing changed.
+  bool beginImportedAudioSource(AudioSource source) {
+    if (isLiveCaptureActive) return false;
+    _activeSource = source;
+    return true;
+  }
+
+  /// Hands one frame from a file import to the write-ahead log and the socket.
+  ///
+  /// Deliberately the identical sequence used for live capture, so an imported frame
+  /// travels the same route with the same bookkeeping.
+  void sendImportedFrame(WalFrame frame) {
+    _wal.getSyncs().phone.onFrameCaptured(frame);
+    if (_socket?.state == SocketServiceState.connected) {
+      _socket?.send(frame.payload);
+      _wal.getSyncs().phone.markFrameSynced(frame.syncKey);
+    }
+  }
+
+  /// Clears the import source without creating a conversation.
+  ///
+  /// Used when an import is cancelled or produced nothing worth keeping. The session is
+  /// abandoned rather than closed, because closing it is what creates a conversation
+  /// and a cancelled import must not leave one behind.
+  void abandonImportedAudioSource() {
+    _activeSource = null;
+    _resetStateVariables();
+  }
+
   Future<void> forceProcessingCurrentConversation() async {
     final sessionStart = _sessionStartSeconds;
 
