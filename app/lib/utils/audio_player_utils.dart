@@ -213,6 +213,36 @@ class AudioPlayerUtils extends ChangeNotifier {
     }
   }
 
+  /// Decodes [wal] to a WAV file for export and returns its path, or null when the
+  /// recording held no usable audio.
+  ///
+  /// Exposed for bulk export, which needs the same file the share sheet gets: named
+  /// after the recording so a folder of them stays identifiable, and not held in the
+  /// playback cache, because a batch of dozens would pin every one of them in memory.
+  Future<String?> createWavFileForExport(Wal wal) => _getOrCreateAudioFile(wal, forSharing: true);
+
+  /// Shares many already-decoded WAV files in one go.
+  ///
+  /// One share sheet for the whole batch rather than one per recording, which is the
+  /// entire point of a bulk export — fifty separate share sheets is the problem, not
+  /// the solution. Does nothing when there is nothing to share.
+  Future<void> shareExportedFiles(List<String> wavFilePaths) async {
+    if (wavFilePaths.isEmpty) return;
+
+    // The current share_plus entry point. The single-recording path above still uses
+    // the deprecated one; it is left alone because changing it is not this change's job.
+    final result = await SharePlus.instance.share(
+      ShareParams(
+        files: wavFilePaths.map(XFile.new).toList(),
+        text: 'Omi Audio Recordings (${wavFilePaths.length})',
+      ),
+    );
+
+    if (result.status == ShareResultStatus.success) {
+      Logger.debug('Shared ${wavFilePaths.length} exported audio files');
+    }
+  }
+
   Future<String?> _getOrCreateAudioFile(Wal wal, {bool forSharing = false}) async {
     final cacheKey = forSharing ? '${wal.id}_share' : wal.id;
 

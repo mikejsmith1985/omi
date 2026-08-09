@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:omi/backend/preferences.dart';
 import 'package:omi/backend/schema/conversation.dart';
 import 'package:omi/services/connectivity_service.dart';
+import 'package:omi/services/export/audio_player_wav_decoder.dart';
+import 'package:omi/services/export/wal_bulk_exporter.dart';
 import 'package:omi/services/services.dart';
 import 'package:omi/services/wals.dart';
 import 'package:omi/utils/debug_log_manager.dart';
@@ -34,6 +36,10 @@ List<SyncedConversationPointer> sortSyncedConversationPointers(
 class SyncProvider extends ChangeNotifier implements IWalServiceListener, IWalSyncProgressListener {
   // Services
   final AudioPlayerUtils _audioPlayerUtils = AudioPlayerUtils.instance;
+
+  /// The export currently running, held only so a cancel button can reach it.
+  WalBulkExporter? _runningBulkExporter;
+
   final IWalService? _walServiceOverride;
   final SyncUploadGate _uploadGate;
   final bool _startBackgroundSync;
@@ -492,6 +498,29 @@ class SyncProvider extends ChangeNotifier implements IWalServiceListener, IWalSy
 
   Future<WalStats> getWalStats() async {
     return await _walService.getSyncs().getWalStats();
+  }
+
+  /// Exports every recording that still has audio on the phone to a WAV file.
+  ///
+  /// Exports all recordings rather than only the unsynced ones: a recording being
+  /// synced says the server made a conversation from it, not that the audio was kept,
+  /// so the synced ones are exactly the ones a user is most likely to want a copy of.
+  Future<BulkExportResult> exportAllRecordingsToWav({BulkExportProgressCallback? onProgress}) async {
+    final exporter = WalBulkExporter(decoder: AudioPlayerWavDecoder(_audioPlayerUtils));
+    _runningBulkExporter = exporter;
+    try {
+      return await exporter.exportRecordings(allWals, onProgress: onProgress);
+    } finally {
+      _runningBulkExporter = null;
+    }
+  }
+
+  /// Stops a running export after the recording it is currently working on.
+  void cancelBulkExport() => _runningBulkExporter?.cancel();
+
+  /// Hands the exported WAV files to the system share sheet in one batch.
+  Future<void> shareExportedRecordings(List<ExportedRecording> exported) {
+    return _audioPlayerUtils.shareExportedFiles(exported.map((entry) => entry.wavFilePath).toList());
   }
 
   Future<void> deleteWal(Wal wal) async {

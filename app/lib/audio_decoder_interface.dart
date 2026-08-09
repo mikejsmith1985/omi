@@ -28,7 +28,25 @@ import 'package:pigeon/pigeon.dart';
 )
 
 /// What a decode session is doing. Mirrored to Dart on every transition.
-enum AudioDecodeState { idle, opening, decoding, finished, failed, cancelled }
+enum AudioDecodeState {
+  /// No decode has been asked for yet.
+  idle,
+
+  /// The file is being opened and its format read, before any audio is produced.
+  opening,
+
+  /// Audio is being produced and handed to the pipeline.
+  decoding,
+
+  /// The whole file was decoded successfully.
+  finished,
+
+  /// Decoding stopped because something went wrong; the reason travels separately.
+  failed,
+
+  /// Decoding stopped because the user asked it to, which is not a failure.
+  cancelled,
+}
 
 /// What the decoder found in the file before decoding it.
 ///
@@ -62,6 +80,7 @@ class AudioProbeResult {
   /// recorders write no date at all, which is what the filename and the user are for.
   int? creationEpochMillis;
 
+  /// Creates the result of probing one file, before any of it is decoded.
   AudioProbeResult(
     this.isDecodable,
     this.durationSeconds,

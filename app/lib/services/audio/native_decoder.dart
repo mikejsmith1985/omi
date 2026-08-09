@@ -26,7 +26,11 @@ import 'package:omi/services/import/import_failures.dart';
 /// described there as 10 ms at 16 kHz 16-bit mono. Frames of any other shape will not
 /// survive the pipeline.
 const int decoderSampleRate = 16000;
+
+/// Mono, because the transcription pipeline mixes to one channel regardless.
 const int decoderChannelCount = 1;
+
+/// 16-bit samples, the width the pipeline's frames are measured in.
 const int decoderBytesPerSample = 2;
 
 /// How much PCM to ask for in one read.
