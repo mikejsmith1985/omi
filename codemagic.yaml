@@ -1,4 +1,107 @@
 workflows:
+
+  ios-personal-dogfood:
+    name: Personal iOS dogfood build
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    integrations:
+      # Name of the App Store Connect integration you create in Codemagic settings.
+      app_store_connect: "REPLACE_ME"  # your integration name
+    environment:
+      ios_signing:
+        # Codemagic fetches/creates these from your App Store Connect API key.
+        provisioning_profiles:
+          - "REPLACE_ME"  # your provisioning profile name
+        certificates:
+          - "REPLACE_ME"  # your distribution certificate name
+      vars:
+        # From App Store Connect once you create the app record. NOT Omi's 6502156163.
+        APP_ID: "REPLACE_ME"  # your numeric App Store Connect app id
+        # A bundle id you own and have registered on your Apple team.
+        OMI_PERSONAL_BUNDLE_ID: "REPLACE_ME"  # e.g. com.yourname.omi.dev
+        # Where the app should look for the backend. Your PC's LAN address, because
+        # 127.0.0.1 on the phone means the phone. Run `ipconfig` on Windows.
+        # Must be reachable from the iPhone — same Wi-Fi, firewall open on 8000.
+        OMI_API_BASE_URL: "REPLACE_ME"  # e.g. http://192.168.1.50:8000/
+        OMI_FIREBASE_AUTH_EMULATOR_HOST: "REPLACE_ME"  # same IP, no port, e.g. 192.168.1.50
+      # Match what upstream's mobile workflows pin, so you hit the same toolchain
+      # their CI does rather than debugging a version difference that is yours alone.
+      flutter: 3.41.9
+      xcode: 26.0.1
+      cocoapods: 1.16.2
+    cache:
+      cache_paths:
+        - $HOME/.pub-cache
+        - $HOME/Library/Caches/CocoaPods
+    working_directory: app
+    scripts:
+      - name: Install Opus
+        script: |
+          brew install opus
+          brew install opus-tools
+
+      # setup.sh's dev path, unrolled. The script itself ends in `flutter run`,
+      # which wants an attached device, so CI cannot call it directly — these are
+      # the same preparation steps it performs before that point.
+      - name: Firebase config from the committed prebuilt files
+        script: |
+          cp lib/firebase_options_local.dart lib/firebase_options_prod.dart
+          cp setup/prebuilt/GoogleService-Info-Local.plist ios/Config/Dev/GoogleService-Info.plist
+          cp setup/prebuilt/GoogleService-Info-Local.plist ios/Config/Prod/GoogleService-Info.plist
+          cp setup/prebuilt/GoogleService-Info-Local.plist ios/Runner/GoogleService-Info.plist
+
+      - name: Generate iOS Info.plist and custom config
+        script: |
+          bash scripts/generate_ios_dev_info_plist.sh
+          bash scripts/generate_ios_custom_config.sh ios/Config/Dev/GoogleService-Info.plist ios/Flutter
+          # setup.sh derives a per-machine suffix here so local builds sit beside the
+          # App Store app. On CI there is no stable hostname worth deriving from, so
+          # the bundle id is pinned to the one you registered.
+          echo "APP_BUNDLE_IDENTIFIER=${OMI_PERSONAL_BUNDLE_ID}" >> ios/Flutter/Custom.xcconfig
+          echo "AUTH_CALLBACK_SCHEME=omi-dev" >> ios/Flutter/Custom.xcconfig
+
+      - name: Write .dev.env
+        script: |
+          touch .dev.env
+          {
+            echo "API_BASE_URL=${OMI_API_BASE_URL}"
+            echo "USE_WEB_AUTH=true"
+            echo "USE_AUTH_CUSTOM_TOKEN=true"
+          } >> .dev.env
+
+      - name: Flutter dependencies and codegen
+        script: |
+          flutter pub get
+          dart run build_runner build --delete-conflicting-outputs
+
+      - name: CocoaPods
+        script: |
+          cd ios && pod install --repo-update
+
+      - name: Set up code signing
+        script: xcode-project use-profiles
+
+      - name: Build ipa
+        script: |
+          flutter build ipa \
+            --release \
+            --flavor dev \
+            --dart-define=OMI_APP_PROFILE=local_dev \
+            --dart-define=OMI_API_BASE_URL="${OMI_API_BASE_URL}" \
+            --dart-define=OMI_FIREBASE_AUTH_EMULATOR_HOST="${OMI_FIREBASE_AUTH_EMULATOR_HOST}" \
+            --export-options-plist=$HOME/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - flutter_drive.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        # Your own internal group. Not Omi's.
+        beta_groups:
+          - "REPLACE_ME"  # your TestFlight group name
+        submit_to_app_store: false
+
   # ============================================
   # AUTO-DEPLOY WORKFLOWS (Triggered on push to main)
   # ============================================
