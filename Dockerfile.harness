@@ -1,0 +1,79 @@
+# Local dev harness for the Omi backend, as a container.
+#
+# Why this exists: the harness targets Linux and hard-requires `redis-server` and a
+# Java runtime on PATH. Windows has no official Redis build, and installing into WSL
+# needs an interactive sudo password. A container gives root without either, and —
+# unlike WSL — publishes its ports straight to the LAN, which is what an iPhone on
+# the same Wi-Fi needs to reach the backend.
+#
+# Typesense runs as a native binary rather than the harness's default Docker runtime,
+# because nesting Docker inside this container to start one service is not worth it.
+#
+# Build:  docker build -f Dockerfile.harness -t omi-harness .
+# Run:    see scripts/harness-up.sh
+
+FROM python:3.12-slim
+
+# Node 20: the harness shells out to `npx --yes firebase-tools`, and current
+# firebase-tools refuses Node 18. Debian's default node is older than that.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates curl gnupg \
+    && mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
+        | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
+    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" \
+        > /etc/apt/sources.list.d/nodesource.list \
+    && apt-get update && apt-get install -y --no-install-recommends \
+        nodejs \
+        openjdk-21-jre-headless \
+        redis-server \
+        git \
+        procps \
+        socat \
+    && rm -rf /var/lib/apt/lists/*
+
+# Typesense 27.1 — the version the harness pins. It checks the binary's own
+# --version, so an unpinned build would be rejected.
+ARG TYPESENSE_VERSION=27.1
+RUN set -eux; \
+    arch="$(dpkg --print-architecture)"; \
+    case "$arch" in \
+      amd64) ts_arch=amd64 ;; \
+      arm64) ts_arch=arm64 ;; \
+      *) echo "unsupported arch $arch" >&2; exit 1 ;; \
+    esac; \
+    curl -fsSL "https://dl.typesense.org/releases/${TYPESENSE_VERSION}/typesense-server-${TYPESENSE_VERSION}-linux-${ts_arch}.tar.gz" \
+      -o /tmp/typesense.tar.gz; \
+    tar -xzf /tmp/typesense.tar.gz -C /usr/local/bin typesense-server; \
+    rm /tmp/typesense.tar.gz; \
+    test -x /usr/local/bin/typesense-server
+
+WORKDIR /repo
+
+# Backend dependencies are baked in so a container restart does not re-download
+# them. requirements.txt is copied alone first so editing app code does not
+# invalidate this layer.
+COPY backend/requirements.txt /tmp/requirements.txt
+# webrtcvad is in requirements.txt but nothing under backend/ imports it, and it
+# has no wheels — building it would pull a C toolchain into this image for a
+# package the harness never loads.
+RUN grep -v '^webrtcvad' /tmp/requirements.txt > /tmp/requirements-harness.txt \
+    && pip install --no-cache-dir -r /tmp/requirements-harness.txt \
+    && rm /tmp/requirements.txt /tmp/requirements-harness.txt
+
+# The harness resolves its interpreter from backend/.venv when present. There is no
+# venv here — the image itself is the environment — so point it at the system one.
+ENV PYTHON=/usr/local/bin/python3
+ENV OMI_TYPESENSE_RUNTIME=native
+ENV OMI_TYPESENSE_SERVER_BIN=/usr/local/bin/typesense-server
+
+# Every harness service binds 127.0.0.1 and the host is not configurable
+# (scripts/dev-harness/dev_harness/config.py hardcodes it), so Docker's published
+# ports would forward to nothing. socat bridges the two interfaces: it listens on
+# 0.0.0.0 at a shifted port and forwards to the loopback port the service owns.
+# Only the two the phone actually talks to are bridged — the backend API and the
+# Firebase Auth emulator.
+COPY scripts/harness-expose.sh /usr/local/bin/harness-expose
+RUN chmod +x /usr/local/bin/harness-expose
+
+CMD ["bash"]
