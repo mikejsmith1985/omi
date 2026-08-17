@@ -79,10 +79,6 @@ workflows:
           flutter pub get
           dart run build_runner build --delete-conflicting-outputs
 
-      - name: CocoaPods
-        script: |
-          cd ios && pod install --repo-update
-
       - name: Set up keychain
         script: keychain initialize
 
