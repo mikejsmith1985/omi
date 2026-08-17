@@ -20,7 +20,7 @@ workflows:
         bundle_identifier: "com.mikejsmith.omi"
       vars:
         # From App Store Connect once you create the app record. NOT Omi's 6502156163.
-        APP_ID: "REPLACE_ME"  # your numeric App Store Connect app id
+        APP_ID: "6802326663"
         # A bundle id you own and have registered on your Apple team.
         OMI_PERSONAL_BUNDLE_ID: "com.mikejsmith.omi"
         # Where the app should look for the backend. Your PC's LAN address, because
@@ -101,9 +101,9 @@ workflows:
       app_store_connect:
         auth: integration
         submit_to_testflight: true
-        # Your own internal group. Not Omi's.
-        beta_groups:
-          - "REPLACE_ME"  # your TestFlight group name
+        # No beta_groups: this is a one-person build, so the App Store Connect account
+        # holder installs it as an internal tester rather than through a distribution
+        # group. Add a group here if it ever needs to reach anyone else.
         submit_to_app_store: false
 
   # ============================================
