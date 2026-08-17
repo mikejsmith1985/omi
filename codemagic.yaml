@@ -34,8 +34,10 @@ workflows:
       cocoapods: 1.16.2
     cache:
       cache_paths:
+        # Only pub. The CocoaPods CDN cache is deliberately not persisted: a run that
+        # dies partway through a spec fetch leaves an incomplete cache, and every later
+        # build then re-resolves from the CDN and trips GitHub's rate limit.
         - $HOME/.pub-cache
-        - $HOME/Library/Caches/CocoaPods
     working_directory: app
     scripts:
       - name: Install Opus
@@ -78,6 +80,25 @@ workflows:
         script: |
           flutter pub get
           dart run build_runner build --delete-conflicting-outputs
+
+      - name: CocoaPods with retry
+        script: |
+          # Resolution reads the CocoaPods CDN, which redirects to
+          # raw.githubusercontent.com and returns 429 under load. That is transient and
+          # shared across the runner pool, so a short backoff clears it. No
+          # --repo-update: Podfile.lock already pins every version, and forcing a full
+          # index refresh is what triggered the rate limit in the first place.
+          cd ios
+          for attempt in 1 2 3 4 5; do
+            if pod install; then
+              echo "pod install succeeded on attempt $attempt"
+              exit 0
+            fi
+            echo "pod install failed on attempt $attempt; backing off"
+            sleep $((attempt * 20))
+          done
+          echo "pod install failed after 5 attempts" >&2
+          exit 1
 
       - name: Set up keychain
         script: keychain initialize
