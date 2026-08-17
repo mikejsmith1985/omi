@@ -6,7 +6,7 @@ workflows:
     max_build_duration: 60
     integrations:
       # Name of the App Store Connect integration you create in Codemagic settings.
-      app_store_connect: "REPLACE_ME"  # your integration name
+      app_store_connect: "RLL_Codemagic_CI_AppManager"
     environment:
       ios_signing:
         # Automatic signing: Codemagic fetches the matching certificate and profiles from
