@@ -136,10 +136,25 @@ workflows:
       - name: Apply profiles to the Xcode project
         script: xcode-project use-profiles
 
+      - name: Resolve the next build number
+        script: |
+          # pubspec pins 1.0.543+992 and that build number is already uploaded; App
+          # Store Connect rejects a repeat. Ask it what the highest is and go one past,
+          # so the value never depends on how many times this workflow has run.
+          latest=$(app-store-connect get-latest-build-number "$APP_ID" 2>/dev/null || true)
+          if [ -z "$latest" ]; then
+            echo "no builds on App Store Connect yet; falling back to the pubspec value"
+            latest=$(grep '^version:' pubspec.yaml | sed 's/.*+//')
+          fi
+          next=$((latest + 1))
+          echo "latest on App Store Connect: $latest -> building $next"
+          echo "OMI_BUILD_NUMBER=$next" >> $CM_ENV
+
       - name: Build ipa
         script: |
           flutter build ipa \
             --release \
+            --build-number="${OMI_BUILD_NUMBER}" \
             --flavor prod \
             --dart-define=OMI_APP_PROFILE=mobile_beta \
             --dart-define=OMI_API_BASE_URL="${OMI_API_BASE_URL}" \
