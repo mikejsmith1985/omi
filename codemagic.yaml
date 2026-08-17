@@ -17,12 +17,12 @@ workflows:
         # `provisioning_profiles` and `certificates` are deliberately absent: Codemagic
         # rejects a config that sets both those and these two fields.
         distribution_type: app_store
-        bundle_identifier: "REPLACE_ME"  # same value as OMI_PERSONAL_BUNDLE_ID below
+        bundle_identifier: "com.mikejsmith.omi"
       vars:
         # From App Store Connect once you create the app record. NOT Omi's 6502156163.
         APP_ID: "REPLACE_ME"  # your numeric App Store Connect app id
         # A bundle id you own and have registered on your Apple team.
-        OMI_PERSONAL_BUNDLE_ID: "REPLACE_ME"  # e.g. com.yourname.omi.dev
+        OMI_PERSONAL_BUNDLE_ID: "com.mikejsmith.omi"
         # Where the app should look for the backend. Your PC's LAN address, because
         # 127.0.0.1 on the phone means the phone. Run `ipconfig` on Windows.
         # Must be reachable from the iPhone — same Wi-Fi, firewall open on 8000.
