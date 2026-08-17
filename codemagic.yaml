@@ -65,7 +65,9 @@ workflows:
           for plist in ios/Config/Dev/GoogleService-Info.plist                        ios/Config/Prod/GoogleService-Info.plist                        ios/Runner/GoogleService-Info.plist; do
             /usr/libexec/PlistBuddy -c "Set :BUNDLE_ID ${OMI_PERSONAL_BUNDLE_ID}" "$plist"
           done
-          sed -i '' "s|iosBundleId: 'com.friend-app-with-wearable.ios12.development'|iosBundleId: '${OMI_PERSONAL_BUNDLE_ID}'|g" lib/firebase_options_prod.dart
+          # Both copies: _init() picks firebase_options_local for the local_dev profile and
+          # firebase_options_prod otherwise, and each carries upstream's iosBundleId.
+          sed -i '' "s|iosBundleId: 'com.friend-app-with-wearable.ios12.development'|iosBundleId: '${OMI_PERSONAL_BUNDLE_ID}'|g"             lib/firebase_options_prod.dart lib/firebase_options_local.dart
 
           echo "--- verifying identity ---"
           /usr/libexec/PlistBuddy -c "Print :BUNDLE_ID" ios/Runner/GoogleService-Info.plist
