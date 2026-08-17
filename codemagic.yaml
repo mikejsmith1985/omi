@@ -8,6 +8,11 @@ workflows:
       # Name of the App Store Connect integration you create in Codemagic settings.
       app_store_connect: "RLL_Codemagic_CI_AppManager"
     environment:
+      # Holds CERTIFICATE_PRIVATE_KEY, the RSA key `fetch-signing-files --create` signs the
+      # new distribution certificate with. Without it the CLI fails with "Cannot save
+      # Signing Certificates without certificate private key".
+      groups:
+        - apple_signing
       # No `ios_signing:` block. That form only *fetches* profiles that already exist and
       # fails with "No matching profiles found" on a fresh Apple team. Signing files are
       # created instead by the CLI steps below, which is the flow Codemagic's own
