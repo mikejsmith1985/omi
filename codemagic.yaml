@@ -165,6 +165,10 @@ workflows:
             --export-options-plist=$HOME/export_options.plist
     artifacts:
       - build/ios/ipa/*.ipa
+      # dSYMs so a TestFlight crash arrives symbolicated. Without them the Runner
+      # frames are bare addresses and there is no way to tell which statically linked
+      # pod raised.
+      - build/ios/archive/Runner.xcarchive/dSYMs/**/*.dSYM
       - flutter_drive.log
     publishing:
       app_store_connect:
