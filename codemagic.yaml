@@ -9,11 +9,15 @@ workflows:
       app_store_connect: "REPLACE_ME"  # your integration name
     environment:
       ios_signing:
-        # Codemagic fetches/creates these from your App Store Connect API key.
-        provisioning_profiles:
-          - "REPLACE_ME"  # your provisioning profile name
-        certificates:
-          - "REPLACE_ME"  # your distribution certificate name
+        # Automatic signing: Codemagic fetches the matching certificate and profiles from
+        # the connected API key at build time, and per its docs also fetches profiles for
+        # extensions whose bundle id extends this one — which is what covers Omi's widget
+        # and watch targets without listing them.
+        #
+        # `provisioning_profiles` and `certificates` are deliberately absent: Codemagic
+        # rejects a config that sets both those and these two fields.
+        distribution_type: app_store
+        bundle_identifier: "REPLACE_ME"  # same value as OMI_PERSONAL_BUNDLE_ID below
       vars:
         # From App Store Connect once you create the app record. NOT Omi's 6502156163.
         APP_ID: "REPLACE_ME"  # your numeric App Store Connect app id
