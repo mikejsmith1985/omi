@@ -57,6 +57,20 @@ workflows:
           cp setup/prebuilt/GoogleService-Info-Local.plist ios/Config/Prod/GoogleService-Info.plist
           cp setup/prebuilt/GoogleService-Info-Local.plist ios/Runner/GoogleService-Info.plist
 
+          # The prebuilt config is stamped with upstream's bundle id. The Firebase iOS SDK
+          # aborts at launch when GoogleService-Info.plist's BUNDLE_ID does not match the
+          # running app, which is an immediate crash on open, and firebase_options' own
+          # iosBundleId must agree. The project itself stays demo-omi-local with its fake
+          # emulator key — only the identity is corrected.
+          for plist in ios/Config/Dev/GoogleService-Info.plist                        ios/Config/Prod/GoogleService-Info.plist                        ios/Runner/GoogleService-Info.plist; do
+            /usr/libexec/PlistBuddy -c "Set :BUNDLE_ID ${OMI_PERSONAL_BUNDLE_ID}" "$plist"
+          done
+          sed -i '' "s|iosBundleId: 'com.friend-app-with-wearable.ios12.development'|iosBundleId: '${OMI_PERSONAL_BUNDLE_ID}'|g" lib/firebase_options_prod.dart
+
+          echo "--- verifying identity ---"
+          /usr/libexec/PlistBuddy -c "Print :BUNDLE_ID" ios/Runner/GoogleService-Info.plist
+          grep -c "iosBundleId: '${OMI_PERSONAL_BUNDLE_ID}'" lib/firebase_options_prod.dart
+
       - name: Generate iOS Info.plist and custom config
         script: |
           # Prod config, not Dev. The dev flavor names the widget `.development.widget`,
