@@ -8,16 +8,10 @@ workflows:
       # Name of the App Store Connect integration you create in Codemagic settings.
       app_store_connect: "RLL_Codemagic_CI_AppManager"
     environment:
-      ios_signing:
-        # Automatic signing: Codemagic fetches the matching certificate and profiles from
-        # the connected API key at build time, and per its docs also fetches profiles for
-        # extensions whose bundle id extends this one — which is what covers Omi's widget
-        # and watch targets without listing them.
-        #
-        # `provisioning_profiles` and `certificates` are deliberately absent: Codemagic
-        # rejects a config that sets both those and these two fields.
-        distribution_type: app_store
-        bundle_identifier: "com.mikejsmith.omi"
+      # No `ios_signing:` block. That form only *fetches* profiles that already exist and
+      # fails with "No matching profiles found" on a fresh Apple team. Signing files are
+      # created instead by the CLI steps below, which is the flow Codemagic's own
+      # automatic-code-signing sample uses.
       vars:
         # From App Store Connect once you create the app record. NOT Omi's 6502156163.
         APP_ID: "6802326663"
@@ -82,7 +76,21 @@ workflows:
         script: |
           cd ios && pod install --repo-update
 
-      - name: Set up code signing
+      - name: Set up keychain
+        script: keychain initialize
+
+      - name: Fetch or create signing files
+        script: |
+          # --create makes the certificate and provisioning profile when they do not exist
+          # yet. Each extension needs its own profile, so all three bundle ids are fetched.
+          app-store-connect fetch-signing-files "$OMI_PERSONAL_BUNDLE_ID" --type IOS_APP_STORE --create
+          app-store-connect fetch-signing-files "$OMI_PERSONAL_BUNDLE_ID.widget" --type IOS_APP_STORE --create
+          app-store-connect fetch-signing-files "$OMI_PERSONAL_BUNDLE_ID.watchapp" --type IOS_APP_STORE --create
+
+      - name: Add certificates to keychain
+        script: keychain add-certificates
+
+      - name: Apply profiles to the Xcode project
         script: xcode-project use-profiles
 
       - name: Build ipa
