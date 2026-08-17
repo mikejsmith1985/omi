@@ -48,6 +48,8 @@ workflows:
       # the same preparation steps it performs before that point.
       - name: Firebase config from the committed prebuilt files
         script: |
+          # setup.sh creates these before copying; ios/Config is not in the repo.
+          mkdir -p ios/Config/Dev ios/Config/Prod ios/Runner
           cp lib/firebase_options_local.dart lib/firebase_options_prod.dart
           cp setup/prebuilt/GoogleService-Info-Local.plist ios/Config/Dev/GoogleService-Info.plist
           cp setup/prebuilt/GoogleService-Info-Local.plist ios/Config/Prod/GoogleService-Info.plist
