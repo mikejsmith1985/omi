@@ -73,23 +73,24 @@ workflows:
 
       - name: Generate iOS Info.plist and custom config
         script: |
-          # Prod config, not Dev. The dev flavor names the widget `.development.widget`,
-          # and App Store Connect rejects an extension id with more than one period after
-          # the app's id. generate_ios_dev_info_plist.sh is dev-only and not needed here.
-          bash scripts/generate_ios_custom_config.sh ios/Config/Prod/GoogleService-Info.plist ios/Flutter
+          # Dev flavor: local_dev is the only profile that accepts the demo-omi-local
+          # Firebase project this fork has, and Env.validateProfilePairing refuses
+          # local_dev on the prod flavor. project.pbxproj is patched on this branch so
+          # the dev widget id is `.widget`, which App Store Connect accepts.
+          bash scripts/generate_ios_dev_info_plist.sh
+          bash scripts/generate_ios_custom_config.sh ios/Config/Dev/GoogleService-Info.plist ios/Flutter
           echo "APP_BUNDLE_IDENTIFIER=${OMI_PERSONAL_BUNDLE_ID}" >> ios/Flutter/Custom.xcconfig
-          echo "AUTH_CALLBACK_SCHEME=omi-beta" >> ios/Flutter/Custom.xcconfig
+          echo "AUTH_CALLBACK_SCHEME=omi-dev" >> ios/Flutter/Custom.xcconfig
 
-      - name: Write .env
+      - name: Write .dev.env
         script: |
-          # The prod flavor's EnvFields reads `.env` (lib/env/prod_env.dart); `.dev.env`
-          # belongs to the dev flavor and would simply be ignored.
-          touch .env
+          # The dev flavor's EnvFields reads `.dev.env` (lib/env/dev_env.dart).
+          touch .dev.env
           {
             echo "API_BASE_URL=${OMI_API_BASE_URL}"
             echo "USE_WEB_AUTH=true"
             echo "USE_AUTH_CUSTOM_TOKEN=true"
-          } >> .env
+          } >> .dev.env
 
       - name: Flutter dependencies and codegen
         script: |
@@ -155,8 +156,8 @@ workflows:
           flutter build ipa \
             --release \
             --build-number="${OMI_BUILD_NUMBER}" \
-            --flavor prod \
-            --dart-define=OMI_APP_PROFILE=mobile_beta \
+            --flavor dev \
+            --dart-define=OMI_APP_PROFILE=local_dev \
             --dart-define=OMI_API_BASE_URL="${OMI_API_BASE_URL}" \
             --dart-define=OMI_FIREBASE_AUTH_EMULATOR_HOST="${OMI_FIREBASE_AUTH_EMULATOR_HOST}" \
             --export-options-plist=$HOME/export_options.plist
