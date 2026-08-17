@@ -137,10 +137,14 @@ workflows:
     publishing:
       app_store_connect:
         auth: integration
-        submit_to_testflight: true
-        # No beta_groups: this is a one-person build, so the App Store Connect account
-        # holder installs it as an internal tester rather than through a distribution
-        # group. Add a group here if it ever needs to reach anyone else.
+        # Upload only. submit_to_testflight submits for TestFlight *beta review*, which is
+        # the external-testing path and demands Beta App Information and Beta App Review
+        # Information — feedback email, contact name, phone. None of that applies to a
+        # one-person dogfood build.
+        #
+        # Internal testers get processed builds immediately, with no review and no
+        # metadata, so the upload alone is enough to install on your own device.
+        submit_to_testflight: false
         submit_to_app_store: false
 
   # ============================================
