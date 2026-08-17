@@ -90,8 +90,14 @@ workflows:
         script: |
           # --create makes the certificate and provisioning profile when they do not exist
           # yet. Each extension needs its own profile, so all three bundle ids are fetched.
+          #
+          # The widget's id is flavor-dependent: Release-dev builds it as
+          # `.development.widget` while Release-prod uses `.widget` (see
+          # PRODUCT_BUNDLE_IDENTIFIER per XCBuildConfiguration in project.pbxproj). This
+          # workflow builds --flavor dev, so the development spelling is the one that must
+          # exist. The watch app keeps `.watchapp` in every configuration.
           app-store-connect fetch-signing-files "$OMI_PERSONAL_BUNDLE_ID" --type IOS_APP_STORE --create
-          app-store-connect fetch-signing-files "$OMI_PERSONAL_BUNDLE_ID.widget" --type IOS_APP_STORE --create
+          app-store-connect fetch-signing-files "$OMI_PERSONAL_BUNDLE_ID.development.widget" --type IOS_APP_STORE --create
           app-store-connect fetch-signing-files "$OMI_PERSONAL_BUNDLE_ID.watchapp" --type IOS_APP_STORE --create
 
       - name: Add certificates to keychain
