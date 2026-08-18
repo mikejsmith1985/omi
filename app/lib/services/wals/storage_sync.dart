@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
+
 import 'package:omi/utils/debug_log_manager.dart';
 import 'package:omi/utils/logger.dart';
 import 'package:path_provider/path_provider.dart';
@@ -19,6 +21,10 @@ import 'package:omi/services/wals/wal_interfaces.dart';
 /// device LittleFS storage to phone, then hands them to LocalWalSync for upload.
 ///
 /// Closely follows the proven BLE sync pattern from PR #5905's sdcard_wal_sync changes.
+/// How this sync reaches the connected device. Injected so a test can drive the
+/// real delete path without a BLE stack behind it.
+typedef StorageConnectionResolver = Future<DeviceConnection?> Function(String deviceId);
+
 class StorageSyncImpl implements StorageSync {
   List<Wal> _wals = [];
   BtDevice? _device;
@@ -41,7 +47,19 @@ class StorageSyncImpl implements StorageSync {
   @override
   double get currentSpeedKBps => _currentSpeedKBps;
 
-  StorageSyncImpl(this.listener);
+  final StorageConnectionResolver? _connectionResolverOverride;
+
+  StorageConnectionResolver get _connectionResolver =>
+      _connectionResolverOverride ?? (deviceId) => ServiceManager.instance().device.ensureConnection(deviceId);
+
+  StorageSyncImpl(this.listener, {StorageConnectionResolver? connectionResolver})
+      : _connectionResolverOverride = connectionResolver;
+
+  @visibleForTesting
+  List<Wal> get testWals => _wals;
+
+  @visibleForTesting
+  set testWals(List<Wal> wals) => _wals = wals;
 
   @override
   void setLocalSync(LocalWalSync localSync) {
@@ -227,39 +245,48 @@ class StorageSyncImpl implements StorageSync {
   @override
   Future<void> deleteAllSyncedWals() async {
     final toDelete = _wals.where((w) => w.status == WalStatus.synced).toList();
-    await _deleteWalsOnDevice(toDelete);
-    _wals = _wals.where((w) => w.status != WalStatus.synced).toList();
+    final cleared = await _deleteWalsOnDevice(toDelete);
+    _wals = _wals.where((w) => w.status != WalStatus.synced || !cleared.contains(w.id)).toList();
     listener.onWalUpdated();
   }
 
   @override
   Future<void> deleteAllPendingWals() async {
     final toDelete = _wals.where((w) => w.status == WalStatus.miss).toList();
-    await _deleteWalsOnDevice(toDelete);
-    _wals = _wals.where((w) => w.status != WalStatus.miss).toList();
+    final cleared = await _deleteWalsOnDevice(toDelete);
+    _wals = _wals.where((w) => w.status != WalStatus.miss || !cleared.contains(w.id)).toList();
     listener.onWalUpdated();
   }
 
   /// Deletes files on the device via CMD_DELETE_FILE. Firmware re-indexes files
   /// after each delete (higher indices shift down by 1), so delete highest index
   /// first to keep remaining fileNums valid.
-  Future<void> _deleteWalsOnDevice(List<Wal> wals) async {
-    if (wals.isEmpty || _device == null) return;
-    final connection = await ServiceManager.instance().device.ensureConnection(_device!.id);
+  /// Returns the ids that are no longer on the device: the files the firmware
+  /// confirmed it deleted, plus any WAL that had no device file to begin with.
+  /// Anything absent from that set is still occupying device storage, so the
+  /// caller has to keep it — dropping it would hide a recording that still
+  /// fills the device and can no longer be retried.
+  Future<Set<String>> _deleteWalsOnDevice(List<Wal> wals) async {
+    if (wals.isEmpty || _device == null) return const {};
+    final cleared = wals.where((w) => w.fileNum < 0).map((w) => w.id).toSet();
+    final connection = await _connectionResolver(_device!.id);
     if (connection == null) {
       Logger.debug('StorageSync._deleteWalsOnDevice: no connection, skipping firmware delete');
-      return;
+      return cleared;
     }
     final targets = wals.where((w) => w.fileNum >= 0).toList()..sort((a, b) => b.fileNum.compareTo(a.fileNum));
-    final deletedIds = targets.map((w) => w.id).toSet();
     for (final wal in targets) {
       try {
         final ok = await connection.deleteStorageFile(wal.fileNum);
         Logger.debug('StorageSync._deleteWalsOnDevice: deleted fileNum=${wal.fileNum} ok=$ok');
         if (ok) {
-          // Firmware shifts remaining indices down by 1 for any file above the deleted one.
+          cleared.add(wal.id);
+          // Firmware shifts remaining indices down by 1 for any file above the
+          // deleted one. Survivors include targets whose own delete failed, so
+          // shift everything still on the device rather than every target.
           for (final other in _wals) {
-            if (deletedIds.contains(other.id)) continue;
+            if (other.id == wal.id) continue;
+            if (cleared.contains(other.id)) continue;
             if (other.fileNum > wal.fileNum) {
               other.fileNum -= 1;
             }
@@ -269,6 +296,7 @@ class StorageSyncImpl implements StorageSync {
         Logger.debug('StorageSync._deleteWalsOnDevice: failed fileNum=${wal.fileNum}: $e');
       }
     }
+    return cleared;
   }
 
   @override
