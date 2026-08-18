@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'package:omi/backend/preferences.dart';
 import 'package:omi/models/sync_state.dart';
 import 'package:omi/pages/conversations/sync_cooldown_copy.dart';
+import 'package:omi/pages/export/bulk_export_dialog.dart';
 import 'package:omi/providers/connectivity_provider.dart';
 import 'package:omi/providers/sync_provider.dart';
 import 'package:omi/providers/user_provider.dart';
@@ -360,12 +361,38 @@ class _SyncPageState extends State<SyncPage> {
     }
   }
 
+  /// Exports every recording to WAV, then offers the finished files to the user.
+  ///
+  /// The share sheet is offered even after a cancelled run, because the recordings that
+  /// did finish are worth having and re-running to get them back would be wasteful.
+  Future<void> _runBulkExport(BuildContext context, SyncProvider provider) async {
+    final result = await showBulkExportDialog(context, provider);
+    if (result == null || !context.mounted) return;
+
+    if (!result.hasAnyExport) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No recordings could be exported'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    final failureNote = result.failures.isEmpty ? '' : ' (${result.failures.length} could not be read)';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Exported ${result.exported.length} recordings$failureNote')),
+    );
+    await provider.shareExportedRecordings(result.exported);
+  }
+
   void _showManageStorageSheet(BuildContext context, SyncProvider provider) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) => _ManageStorageSheet(
         provider: provider,
+        onExportAll: () async {
+          Navigator.of(sheetContext).pop();
+          await _runBulkExport(context, provider);
+        },
         onClearSynced: () async {
           Navigator.of(sheetContext).pop();
           final confirmed = await OmiConfirmDialog.show(
@@ -1076,12 +1103,14 @@ class _ManageStorageSheet extends StatelessWidget {
   final VoidCallback onClearSynced;
   final VoidCallback onClearPending;
   final VoidCallback onClearAll;
+  final VoidCallback onExportAll;
 
   const _ManageStorageSheet({
     required this.provider,
     required this.onClearSynced,
     required this.onClearPending,
     required this.onClearAll,
+    required this.onExportAll,
   });
 
   @override
@@ -1137,8 +1166,30 @@ class _ManageStorageSheet extends StatelessWidget {
                 clearLabel: context.l10n.clear,
                 isWarning: true,
               ),
-              if (totalCount > 0) ...[
+              // Placed above the destructive actions on purpose: getting a copy out is
+              // the thing a user should find first, and deleting is what they cannot undo.
+              if (provider.allWals.isNotEmpty) ...[
                 const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: onExportAll,
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(color: Colors.white.withValues(alpha: 0.24)),
+                      ),
+                    ),
+                    child: const Text(
+                      'Export all as WAV',
+                      style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ),
+              ],
+              if (totalCount > 0) ...[
+                const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
                   child: TextButton(

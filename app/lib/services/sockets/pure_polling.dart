@@ -112,6 +112,21 @@ class PurePollingSocket implements IPureSocket {
 
   int get _totalBufferBytes => _audioFrames.fold<int>(0, (sum, frame) => sum + frame.length);
 
+  /// How many bytes of audio are waiting to be transcribed.
+  ///
+  /// Live sources are self-pacing — a microphone produces one second of audio per
+  /// second — so nothing ever needed to ask how full this buffer was. A source reading
+  /// from a file has no such limit and would otherwise hand over an entire recording
+  /// before the first flush ran. Exposing the depth lets such a source wait, which is
+  /// what keeps peak memory flat with respect to how long the recording is.
+  int get bufferedAudioBytes => _totalBufferBytes;
+
+  /// Whether a transcription pass is currently running.
+  ///
+  /// Read together with [bufferedAudioBytes]: when this is true a further chunk is in
+  /// flight beyond what the buffer reports, so a caller pacing itself must count it.
+  bool get isTranscribing => _isProcessing;
+
   Future<void> _flushBuffer() async {
     if (_audioFrames.isEmpty || _status != PurePollingStatus.connected) {
       return;
