@@ -48,30 +48,57 @@ workflows:
       # setup.sh's dev path, unrolled. The script itself ends in `flutter run`,
       # which wants an attached device, so CI cannot call it directly — these are
       # the same preparation steps it performs before that point.
-      - name: Firebase config from the committed prebuilt files
+      - name: Firebase config from this fork's own project
         script: |
-          # setup.sh creates these before copying; ios/Config is not in the repo.
+          # setup/prebuilt/GoogleService-Info-Local.plist is emulator scaffolding: its
+          # GOOGLE_APP_ID and API_KEY are placeholders, and upstream never ships it to an
+          # iOS build — their workflow generates real config with flutterfire and writes
+          # the plist from GOOGLE_INFO_PLIST_KEY. Handing the placeholders to the native
+          # Firebase SDK is what aborted this app during didFinishLaunching, before Dart
+          # main() ever ran. GOOGLE_INFO_PLIST holds a real plist from a Firebase project
+          # registered against this fork's bundle id.
           mkdir -p ios/Config/Dev ios/Config/Prod ios/Runner
+          printf '%s' "$GOOGLE_INFO_PLIST" > ios/Runner/GoogleService-Info.plist
+          cp ios/Runner/GoogleService-Info.plist ios/Config/Dev/GoogleService-Info.plist
+          cp ios/Runner/GoogleService-Info.plist ios/Config/Prod/GoogleService-Info.plist
+
+          read_key() { /usr/libexec/PlistBuddy -c "Print :$1" ios/Runner/GoogleService-Info.plist; }
+          FB_PROJECT_ID=$(read_key PROJECT_ID)
+          FB_API_KEY=$(read_key API_KEY)
+          FB_APP_ID=$(read_key GOOGLE_APP_ID)
+          FB_SENDER_ID=$(read_key GCM_SENDER_ID)
+          FB_BUCKET=$(read_key STORAGE_BUCKET)
+          FB_BUNDLE_ID=$(read_key BUNDLE_ID)
+
+          if [ "$FB_BUNDLE_ID" != "$OMI_PERSONAL_BUNDLE_ID" ]; then
+            echo "GoogleService-Info.plist is registered to $FB_BUNDLE_ID but this app is $OMI_PERSONAL_BUNDLE_ID" >&2
+            exit 1
+          fi
+
+          # The Dart options must describe the same project as the plist, or
+          # Env.validateFirebaseProject throws once Flutter starts. Substituting the
+          # placeholders keeps the generated files' shape and only swaps identity.
           cp lib/firebase_options_local.dart lib/firebase_options_prod.dart
-          cp setup/prebuilt/GoogleService-Info-Local.plist ios/Config/Dev/GoogleService-Info.plist
-          cp setup/prebuilt/GoogleService-Info-Local.plist ios/Config/Prod/GoogleService-Info.plist
-          cp setup/prebuilt/GoogleService-Info-Local.plist ios/Runner/GoogleService-Info.plist
-
-          # The prebuilt config is stamped with upstream's bundle id. The Firebase iOS SDK
-          # aborts at launch when GoogleService-Info.plist's BUNDLE_ID does not match the
-          # running app, which is an immediate crash on open, and firebase_options' own
-          # iosBundleId must agree. The project itself stays demo-omi-local with its fake
-          # emulator key — only the identity is corrected.
-          for plist in ios/Config/Dev/GoogleService-Info.plist                        ios/Config/Prod/GoogleService-Info.plist                        ios/Runner/GoogleService-Info.plist; do
-            /usr/libexec/PlistBuddy -c "Set :BUNDLE_ID ${OMI_PERSONAL_BUNDLE_ID}" "$plist"
+          for dart in lib/firebase_options_local.dart lib/firebase_options_prod.dart; do
+            # Longest patterns first: the bucket and auth domain both contain the bare id.
+            sed -i '' "s|demo-omi-local\.localhost|${FB_BUCKET}|g" "$dart"
+            sed -i '' "s|demo-omi-local\.firebaseapp\.com|${FB_PROJECT_ID}.firebaseapp.com|g" "$dart"
+            sed -i '' "s|1:000000000000:ios:omi-dev-local|${FB_APP_ID}|g" "$dart"
+            sed -i '' "s|local-firebase-auth-emulator-api-key|${FB_API_KEY}|g" "$dart"
+            sed -i '' "s|messagingSenderId: '000000000000'|messagingSenderId: '${FB_SENDER_ID}'|g" "$dart"
+            sed -i '' "s|projectId: 'demo-omi-local'|projectId: '${FB_PROJECT_ID}'|g" "$dart"
+            sed -i '' "s|iosBundleId: 'com.friend-app-with-wearable.ios12.development'|iosBundleId: '${OMI_PERSONAL_BUNDLE_ID}'|g" "$dart"
           done
-          # Both copies: _init() picks firebase_options_local for the local_dev profile and
-          # firebase_options_prod otherwise, and each carries upstream's iosBundleId.
-          sed -i '' "s|iosBundleId: 'com.friend-app-with-wearable.ios12.development'|iosBundleId: '${OMI_PERSONAL_BUNDLE_ID}'|g"             lib/firebase_options_prod.dart lib/firebase_options_local.dart
 
-          echo "--- verifying identity ---"
-          /usr/libexec/PlistBuddy -c "Print :BUNDLE_ID" ios/Runner/GoogleService-Info.plist
-          grep -c "iosBundleId: '${OMI_PERSONAL_BUNDLE_ID}'" lib/firebase_options_prod.dart
+          # local_dev pins demo-omi-local as the only project it will accept. This fork
+          # runs its own, so the profile's expectation moves with it.
+          sed -i '' "s|firebaseProjectId: 'demo-omi-local'|firebaseProjectId: '${FB_PROJECT_ID}'|" lib/env/environment_profile.dart
+
+          echo "--- firebase identity ---"
+          echo "project : $FB_PROJECT_ID"
+          echo "bundle  : $FB_BUNDLE_ID"
+          grep -n "firebaseProjectId: '${FB_PROJECT_ID}'" lib/env/environment_profile.dart
+          grep -c "demo-omi-local" lib/firebase_options_local.dart lib/env/environment_profile.dart || true
 
       - name: Generate iOS Info.plist and custom config
         script: |
