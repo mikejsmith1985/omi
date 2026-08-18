@@ -2,6 +2,9 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
+
+import 'package:omi/services/devices/connectors/device_connection.dart';
 import 'package:omi/utils/debug_log_manager.dart';
 import 'package:omi/utils/logger.dart';
 import 'package:path_provider/path_provider.dart';
@@ -32,7 +35,14 @@ import 'package:omi/services/wals/wal_interfaces.dart';
 /// AND every chunk we received during the transfer has been handed to LocalWalSync.
 /// On any failure (cancel, BLE drop, NOTIFY_DONE error status) the ring is left
 /// untouched — the next sync session resumes from the same read_seq.
+/// How this sync reaches the connected device. Injected so a test can drive the
+/// real clear path without a BLE stack behind it.
+typedef RingConnectionResolver = Future<DeviceConnection?> Function(String deviceId);
+
 class RingStorageSyncImpl implements RingStorageSync {
+  /// Longest a clear waits for a cancelled transfer to unwind before proceeding.
+  static const Duration _clearSyncStopTimeout = Duration(seconds: 5);
+
   List<Wal> _wals = [];
   BtDevice? _device;
 
@@ -54,7 +64,33 @@ class RingStorageSyncImpl implements RingStorageSync {
   @override
   double get currentSpeedKBps => _currentSpeedKBps;
 
-  RingStorageSyncImpl(this.listener);
+  /// Completes when an in-flight transfer has finished unwinding, so a clear
+  /// that arrives mid-transfer can wait for it instead of giving up.
+  Completer<void>? _syncStopped;
+
+  final RingConnectionResolver? _connectionResolverOverride;
+
+  RingConnectionResolver get _connectionResolver =>
+      _connectionResolverOverride ?? (deviceId) => ServiceManager.instance().device.ensureConnection(deviceId);
+
+  RingStorageSyncImpl(this.listener, {RingConnectionResolver? connectionResolver})
+      : _connectionResolverOverride = connectionResolver;
+
+  @visibleForTesting
+  List<Wal> get testWals => _wals;
+
+  @visibleForTesting
+  set testWals(List<Wal> wals) => _wals = wals;
+
+  /// Mirrors the flag a live transfer sets, so a test can exercise the
+  /// mid-transfer clear path without driving a whole BLE session.
+  @visibleForTesting
+  set testIsSyncing(bool value) => _isSyncing = value;
+
+  /// Stands in for the transfer loop reaching its `finally`, which is what
+  /// releases a clear that is waiting on an active sync.
+  @visibleForTesting
+  void testFinishSync() => _finishSync();
 
   @override
   void setLocalSync(LocalWalSync localSync) {
@@ -87,7 +123,7 @@ class RingStorageSyncImpl implements RingStorageSync {
     if (deviceId == null || deviceId.isEmpty) return;
 
     try {
-      final connection = await ServiceManager.instance().device.ensureConnection(deviceId);
+      final connection = await _connectionResolver(deviceId);
       if (connection == null) return;
       // CMD_STOP_SYNC (0x03) — does not persist progress; data stays in the ring.
       await connection.stopStorageSync();
@@ -95,6 +131,16 @@ class RingStorageSyncImpl implements RingStorageSync {
     } catch (e) {
       Logger.debug('RingStorageSync: Failed to send STOP: $e');
     }
+  }
+
+  /// The one place a transfer stops. Releasing the waiter here means a clear
+  /// blocked on an active sync is always let through, on both the success and
+  /// the error path.
+  void _finishSync() {
+    _isSyncing = false;
+    final stopped = _syncStopped;
+    if (stopped != null && !stopped.isCompleted) stopped.complete();
+    _syncStopped = null;
   }
 
   void _resetSyncState() {
@@ -243,19 +289,35 @@ class RingStorageSyncImpl implements RingStorageSync {
   @override
   Future<void> deleteAllPendingWals() async {
     if (!_wals.any((w) => w.status == WalStatus.miss)) return;
+    // A clear asked for mid-transfer used to return here, so the ring kept every
+    // packet while the caller reported the recordings deleted. Someone clearing
+    // storage wants the data gone more than they want the transfer, and
+    // cancelling leaves the ring intact for the clear that follows.
     if (_isSyncing) {
-      Logger.debug('RingStorageSync.deleteAllPendingWals: skipping — sync in progress');
-      return;
+      await _stopSyncBeforeClearing();
     }
     await _clearRingOnDevice();
     _wals = _wals.where((w) => w.status != WalStatus.miss).toList();
     listener.onWalUpdated();
   }
 
+  /// Stops an in-flight transfer and waits for it to unwind before the ring is
+  /// cleared. The wait is bounded: the firmware has already been sent STOP and
+  /// the notification stream torn down, so a transfer that never reports back
+  /// must not strand the clear the user asked for.
+  Future<void> _stopSyncBeforeClearing() async {
+    final stopped = _syncStopped ??= Completer<void>();
+    cancelSync();
+    await stopped.future.timeout(
+      _clearSyncStopTimeout,
+      onTimeout: () => Logger.debug('RingStorageSync: sync did not unwind in time; clearing the ring anyway'),
+    );
+  }
+
   Future<void> _clearRingOnDevice() async {
     if (_device == null) return;
     try {
-      final connection = await ServiceManager.instance().device.ensureConnection(_device!.id);
+      final connection = await _connectionResolver(_device!.id);
       if (connection == null) return;
       final ok = await connection.clearRing();
       Logger.debug('RingStorageSync._clearRingOnDevice: ok=$ok');
@@ -308,7 +370,7 @@ class RingStorageSyncImpl implements RingStorageSync {
       Logger.debug('RingStorageSync.syncAll: error: $e');
       DebugLogManager.logError(e, null, 'RingStorageSync failed', {'device': _device?.id});
     } finally {
-      _isSyncing = false;
+      _finishSync();
     }
 
     progress?.onWalSyncedProgress(1.0, speedKBps: _currentSpeedKBps);
@@ -330,7 +392,7 @@ class RingStorageSyncImpl implements RingStorageSync {
     } catch (e) {
       Logger.debug('RingStorageSync.syncWal: error: $e');
     } finally {
-      _isSyncing = false;
+      _finishSync();
     }
     return SyncLocalFilesResponse(newConversationIds: [], updatedConversationIds: []);
   }
