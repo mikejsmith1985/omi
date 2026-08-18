@@ -75,6 +75,18 @@ workflows:
             exit 1
           fi
 
+          # Native Google sign-in needs the OAuth callback URL scheme, which
+          # generate_ios_custom_config.sh reads from REVERSED_CLIENT_ID. That key only
+          # appears in the plist once Google is enabled under Firebase Authentication →
+          # Sign-in method. Failing here costs seconds; finding out on the device costs a
+          # whole build.
+          if ! /usr/libexec/PlistBuddy -c "Print :REVERSED_CLIENT_ID" ios/Runner/GoogleService-Info.plist >/dev/null 2>&1; then
+            echo "GoogleService-Info.plist has no REVERSED_CLIENT_ID." >&2
+            echo "Enable Google under Firebase Console → Authentication → Sign-in method," >&2
+            echo "re-download the plist, and update GOOGLE_INFO_PLIST in Codemagic." >&2
+            exit 1
+          fi
+
           # The Dart options must describe the same project as the plist, or
           # Env.validateFirebaseProject throws once Flutter starts. Substituting the
           # placeholders keeps the generated files' shape and only swaps identity.
