@@ -117,7 +117,12 @@ workflows:
           touch .dev.env
           {
             echo "API_BASE_URL=${OMI_API_BASE_URL}"
-            echo "USE_WEB_AUTH=true"
+            # false routes iOS sign-in through signInWithAppleMobile — the native flow,
+            # which talks to Firebase Auth (pointed at the local emulator) directly. true
+            # sends it to the backend's /v1/auth/apple redirect, which needs APPLE_CLIENT_ID
+            # and BASE_API_URL and a Services ID registered on the Apple team; the harness
+            # has none of those and answers "Apple client ID not configured".
+            echo "USE_WEB_AUTH=false"
             echo "USE_AUTH_CUSTOM_TOKEN=true"
           } >> .dev.env
 
