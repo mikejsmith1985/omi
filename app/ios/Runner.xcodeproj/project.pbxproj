@@ -127,6 +127,14 @@
 		EF12345678901234567890EF /* WifiNetworkPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = FG12345678901234567890FG /* WifiNetworkPlugin.swift */; };
 		F8D0037DFD95E0FA0591D087 /* PhoneMicSessionConfigurator.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAADF00DF00DF00DF00DFD05 /* PhoneMicSessionConfigurator.swift */; };
 		FAD7504969BE8B6F6D8D0BD1 /* devLaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = EF770A936DE2AA63387FD198 /* devLaunchScreen.storyboard */; };
+		A0D10DEC0DE0000000000011 /* AudioDecoderPigeon.g.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0D10DEC0DE0000000000001 /* AudioDecoderPigeon.g.swift */; };
+		A0D10DEC0DE0000000000012 /* AudioDecoderPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0D10DEC0DE0000000000002 /* AudioDecoderPlugin.swift */; };
+		A0D10DEC0DE0000000000013 /* DeviceConditionsPigeon.g.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0D10DEC0DE0000000000003 /* DeviceConditionsPigeon.g.swift */; };
+		A0D10DEC0DE0000000000014 /* DeviceConditionsPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0D10DEC0DE0000000000004 /* DeviceConditionsPlugin.swift */; };
+		A0D10DEC0DE0000000000021 /* AudioDecoderPigeon.g.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0D10DEC0DE0000000000001 /* AudioDecoderPigeon.g.swift */; };
+		A0D10DEC0DE0000000000022 /* AudioDecoderPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0D10DEC0DE0000000000002 /* AudioDecoderPlugin.swift */; };
+		A0D10DEC0DE0000000000023 /* DeviceConditionsPigeon.g.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0D10DEC0DE0000000000003 /* DeviceConditionsPigeon.g.swift */; };
+		A0D10DEC0DE0000000000024 /* DeviceConditionsPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0D10DEC0DE0000000000004 /* DeviceConditionsPlugin.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -282,6 +290,10 @@
 		EDFF6508A941E8259906DDE2 /* Pods-Runner.debug-dev.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug-dev.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug-dev.xcconfig"; sourceTree = "<group>"; };
 		EF770A936DE2AA63387FD198 /* devLaunchScreen.storyboard */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = file.storyboard; name = devLaunchScreen.storyboard; path = Runner/devLaunchScreen.storyboard; sourceTree = "<group>"; };
 		FG12345678901234567890FG /* WifiNetworkPlugin.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WifiNetworkPlugin.swift; sourceTree = "<group>"; };
+		A0D10DEC0DE0000000000001 /* AudioDecoderPigeon.g.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioDecoderPigeon.g.swift; sourceTree = "<group>"; };
+		A0D10DEC0DE0000000000002 /* AudioDecoderPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioDecoderPlugin.swift; sourceTree = "<group>"; };
+		A0D10DEC0DE0000000000003 /* DeviceConditionsPigeon.g.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceConditionsPigeon.g.swift; sourceTree = "<group>"; };
+		A0D10DEC0DE0000000000004 /* DeviceConditionsPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceConditionsPlugin.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -461,6 +473,8 @@
 				BAADF00DF00DF00DF00DFB02 /* Batch */,
 				BAADF00DF00DF00DF00DFB03 /* Limitless */,
 				BAADF00DF00DF00DF00DFD00 /* PhoneMic */,
+				A0D10DEC0DE00000000000A0 /* AudioDecoder */,
+				A0D10DEC0DE00000000000B0 /* DeviceConditions */,
 				42BABFC02F2A81B100E78A3C /* PhoneCalls */,
 				4255287C2E7C4B8300FD5CFB /* RecorderHostApiImpl.swift */,
 				5FCEB2FF2C2758C000B17EE8 /* RunnerRelease-dev.entitlements */,
@@ -541,6 +555,24 @@
 				BAADF00DF00DF00DF00DFD0D /* PhoneMicOpusShim.m */,
 			);
 			path = PhoneMic;
+			sourceTree = "<group>";
+		};
+		A0D10DEC0DE00000000000A0 /* AudioDecoder */ = {
+			isa = PBXGroup;
+			children = (
+				A0D10DEC0DE0000000000001 /* AudioDecoderPigeon.g.swift */,
+				A0D10DEC0DE0000000000002 /* AudioDecoderPlugin.swift */,
+			);
+			path = AudioDecoder;
+			sourceTree = "<group>";
+		};
+		A0D10DEC0DE00000000000B0 /* DeviceConditions */ = {
+			isa = PBXGroup;
+			children = (
+				A0D10DEC0DE0000000000003 /* DeviceConditionsPigeon.g.swift */,
+				A0D10DEC0DE0000000000004 /* DeviceConditionsPlugin.swift */,
+			);
+			path = DeviceConditions;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -922,6 +954,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A0D10DEC0DE0000000000011 /* AudioDecoderPigeon.g.swift in Sources */,
+				A0D10DEC0DE0000000000012 /* AudioDecoderPlugin.swift in Sources */,
+				A0D10DEC0DE0000000000013 /* DeviceConditionsPigeon.g.swift in Sources */,
+				A0D10DEC0DE0000000000014 /* DeviceConditionsPlugin.swift in Sources */,
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				42B17C622F69B9CF00BFDA9D /* OmiBleManager.swift in Sources */,
 				BAADF00DF00DF00DF00DF0D2 /* BatchAudioWriter.swift in Sources */,
@@ -966,6 +1002,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A0D10DEC0DE0000000000021 /* AudioDecoderPigeon.g.swift in Sources */,
+				A0D10DEC0DE0000000000022 /* AudioDecoderPlugin.swift in Sources */,
+				A0D10DEC0DE0000000000023 /* DeviceConditionsPigeon.g.swift in Sources */,
+				A0D10DEC0DE0000000000024 /* DeviceConditionsPlugin.swift in Sources */,
 				873C99F3D85C142369688A1D /* AppDelegate.swift in Sources */,
 				99ADCEC5933A6FA3EE3AAE5D /* OmiBleManager.swift in Sources */,
 				0658C1BEFC86B56785C10A69 /* BatchAudioWriter.swift in Sources */,
