@@ -1,6 +1,14 @@
 import AVFoundation
 import Foundation
 
+#if os(iOS)
+  import Flutter
+#elseif os(macOS)
+  import FlutterMacOS
+#else
+  #error("Unsupported platform.")
+#endif
+
 /// Decodes audio files with Core Audio's own decoders, on demand.
 ///
 /// The reason this exists is that nothing in the Omi app can read an `.m4a` — the
@@ -19,11 +27,11 @@ import Foundation
 /// is no hand-written filter here. Both paths must still produce the same thing —
 /// 16 kHz mono PCM16 — and T011 compares them against a known-good decode rather than
 /// trusting that they agree.
-public class AudioDecoderPlugin: NSObject, AudioDecoderHostApi {
+final class AudioDecoderPlugin: NSObject, AudioDecoderHostApi {
 
     private var sessions: [Int64: DecodeSession] = [:]
 
-    public func probe(filePath: String) throws -> AudioProbeResult {
+    func probe(filePath: String) throws -> AudioProbeResult {
         let url = URL(fileURLWithPath: filePath)
         guard FileManager.default.fileExists(atPath: filePath) else {
             throw AudioDecoderPigeonError(code: "file_unreadable", message: "the file is not there", details: nil)
@@ -48,19 +56,19 @@ public class AudioDecoderPlugin: NSObject, AudioDecoderHostApi {
         }
     }
 
-    public func openSession(filePath: String, sessionId: Int64) throws {
+    func openSession(filePath: String, sessionId: Int64) throws {
         closeSession(sessionId: sessionId)
         sessions[sessionId] = try DecodeSession(filePath: filePath)
     }
 
-    public func readChunk(sessionId: Int64, maxBytes: Int64) throws -> FlutterStandardTypedData {
+    func readChunk(sessionId: Int64, maxBytes: Int64) throws -> FlutterStandardTypedData {
         guard let session = sessions[sessionId] else {
             return FlutterStandardTypedData(bytes: Data())
         }
         return FlutterStandardTypedData(bytes: try session.read(maxBytes: Int(maxBytes)))
     }
 
-    public func closeSession(sessionId: Int64) {
+    func closeSession(sessionId: Int64) {
         sessions.removeValue(forKey: sessionId)
     }
 
@@ -102,8 +110,7 @@ public class AudioDecoderPlugin: NSObject, AudioDecoderHostApi {
 
     /// A readable name for the file's codec, for diagnostics and refusal messages.
     private static func describeCodec(_ format: AVAudioFormat) -> String {
-        guard let description = format.streamDescription?.pointee else { return "unknown" }
-        let identifier = description.mFormatID
+        let identifier = format.streamDescription.pointee.mFormatID
         let bytes = [
             UInt8((identifier >> 24) & 0xFF),
             UInt8((identifier >> 16) & 0xFF),
