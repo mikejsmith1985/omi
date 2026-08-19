@@ -11,12 +11,12 @@ import UIKit
 /// Every value is read defensively. A device that declines to report its battery must
 /// leave the import queue running rather than stopping it forever, so a missing value
 /// becomes "unknown" and the policy treats that as permission to continue.
-public class DeviceConditionsPlugin: NSObject, DeviceConditionsHostApi {
+final class DeviceConditionsPlugin: NSObject, DeviceConditionsHostApi {
 
     /// What to report when the platform declines to say.
     private static let unknownBatteryLevel: Double = -1
 
-    override public init() {
+    override init() {
         super.init()
         // Battery reporting is off by default and returns -1 until it is enabled.
         // Enabling it here rather than at each read keeps the first reading truthful;
@@ -24,7 +24,7 @@ public class DeviceConditionsPlugin: NSObject, DeviceConditionsHostApi {
         UIDevice.current.isBatteryMonitoringEnabled = true
     }
 
-    public func read() throws -> DeviceConditions {
+    func read() throws -> DeviceConditions {
         return DeviceConditions(
             batteryLevel: Self.readBatteryLevel(),
             isCharging: Self.readIsCharging(),
