@@ -91,15 +91,28 @@ workflows:
           # Env.validateFirebaseProject throws once Flutter starts. Substituting the
           # placeholders keeps the generated files' shape and only swaps identity.
           cp lib/firebase_options_local.dart lib/firebase_options_prod.dart
+          # Substitute by field name rather than by placeholder value. Matching the
+          # exact placeholder strings upstream happened to ship is brittle: two of
+          # them changed, those substitutions silently did nothing, and the app
+          # started with a real project id beside a placeholder apiKey. Firebase
+          # rejects that mismatch against the native plist as [core/duplicate-app].
           for dart in lib/firebase_options_local.dart lib/firebase_options_prod.dart; do
-            # Longest patterns first: the bucket and auth domain both contain the bare id.
-            sed -i '' "s|demo-omi-local\.localhost|${FB_BUCKET}|g" "$dart"
-            sed -i '' "s|demo-omi-local\.firebaseapp\.com|${FB_PROJECT_ID}.firebaseapp.com|g" "$dart"
-            sed -i '' "s|1:000000000000:ios:omi-dev-local|${FB_APP_ID}|g" "$dart"
-            sed -i '' "s|local-firebase-auth-emulator-api-key|${FB_API_KEY}|g" "$dart"
-            sed -i '' "s|messagingSenderId: '000000000000'|messagingSenderId: '${FB_SENDER_ID}'|g" "$dart"
-            sed -i '' "s|projectId: 'demo-omi-local'|projectId: '${FB_PROJECT_ID}'|g" "$dart"
-            sed -i '' "s|iosBundleId: 'com.friend-app-with-wearable.ios12.development'|iosBundleId: '${OMI_PERSONAL_BUNDLE_ID}'|g" "$dart"
+            sed -i '' -E "s|apiKey: '[^']*'|apiKey: '${FB_API_KEY}'|g" "$dart"
+            sed -i '' -E "s|appId: '[^']*'|appId: '${FB_APP_ID}'|g" "$dart"
+            sed -i '' -E "s|messagingSenderId: '[^']*'|messagingSenderId: '${FB_SENDER_ID}'|g" "$dart"
+            sed -i '' -E "s|projectId: '[^']*'|projectId: '${FB_PROJECT_ID}'|g" "$dart"
+            sed -i '' -E "s|storageBucket: '[^']*'|storageBucket: '${FB_BUCKET}'|g" "$dart"
+            sed -i '' -E "s|authDomain: '[^']*'|authDomain: '${FB_PROJECT_ID}.firebaseapp.com'|g" "$dart"
+            sed -i '' -E "s|iosBundleId: '[^']*'|iosBundleId: '${OMI_PERSONAL_BUNDLE_ID}'|g" "$dart"
+
+            # Fail closed. A surviving placeholder means the app would launch with a
+            # half-real Firebase identity, which is the failure described above.
+            # Quoted values only. The file's header comment names demo-omi-local,
+            # and matching that would fail every build on a line of prose.
+            if grep -nE "'[^']*(demo-omi-local|DEMOOMILOCAL|1:000000000000:|friend-app-with-wearable)[^']*'" "$dart"; then
+              echo "a Firebase placeholder survived substitution in $dart" >&2
+              exit 1
+            fi
           done
 
           # local_dev pins demo-omi-local as the only project it will accept. This fork
