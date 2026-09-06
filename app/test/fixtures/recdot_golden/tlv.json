@@ -1,0 +1,73 @@
+{
+  "cases": [
+    {
+      "expected": {
+        "attributes": [
+          {
+            "attribute": 2,
+            "value_hex": "01"
+          }
+        ]
+      },
+      "input_hex": "020201",
+      "name": "single_attr_one_byte"
+    },
+    {
+      "expected": {
+        "attributes": [
+          {
+            "attribute": 255,
+            "value_hex": ""
+          }
+        ]
+      },
+      "input_hex": "01ff",
+      "name": "empty_value"
+    },
+    {
+      "expected": {
+        "attributes": [
+          {
+            "attribute": 1,
+            "value_hex": "01"
+          },
+          {
+            "attribute": 255,
+            "value_hex": ""
+          },
+          {
+            "attribute": 3,
+            "value_hex": "616263"
+          }
+        ]
+      },
+      "input_hex": "02010101ff0403616263",
+      "name": "three_attrs_mixed"
+    },
+    {
+      "expected": {
+        "attributes": [
+          {
+            "attribute": 1,
+            "value_hex": "4139325858585858585858585858"
+          },
+          {
+            "attribute": 2,
+            "value_hex": "4139325959595959595959595959"
+          }
+        ]
+      },
+      "input_hex": "0f0141393258585858585858585858580f024139325959595959595959595959",
+      "name": "serial_reply_shape"
+    },
+    {
+      "expected": {
+        "error": "truncated"
+      },
+      "input_hex": "050102",
+      "name": "truncated_group_refused"
+    }
+  ],
+  "generator": "scripts/generate_recdot_vectors.py",
+  "source": "scripts/recdot_wire.py"
+}

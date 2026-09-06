@@ -1,0 +1,68 @@
+# Purpose: the stricter lint rules TranscriptBoss's constitution requires, applied
+# only to the files this feature adds — never to the rest of the Omi codebase.
+#
+# Why a separate file rather than edits to analysis_options.yaml:
+#   Omi gates every pull request with an analyzer ratchet (scripts/analyze_ratchet.sh)
+#   that counts lint occurrences per rule across the whole app/ tree and fails when
+#   any rule rises above analysis_baseline.json. Turning on a rule like
+#   public_member_api_docs project-wide would add thousands of occurrences at a
+#   stroke, forcing either a red gate or a baseline rewrite touching code we did not
+#   write. Either would sink the upstream contribution this feature is aiming for
+#   (plan.md D-4). Omi's standard stays Omi's; ours applies to ours.
+#
+# Run it with scripts/check_transcriptboss.sh, which names the files in scope.
+
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  errors:
+    use_build_context_synchronously: error
+    # Article IV: a public member without a doc comment is a defect here, not a
+    # suggestion. The constitution requires every exported function to carry one.
+    public_member_api_docs: error
+    # A doc comment that only restates the signature is worse than none — it costs
+    # a reader time and teaches them to skip the next one.
+    comment_references: warning
+
+linter:
+  rules:
+    # --- Article IV: self-documenting names ---
+    non_constant_identifier_names: true
+    constant_identifier_names: true
+    camel_case_types: true
+    library_names: true
+    file_names: true
+
+    # --- Article IV: doc comments on everything public ---
+    public_member_api_docs: true
+    slash_for_doc_comments: true
+    dangling_library_doc_comments: true
+
+    # --- Article IV: guard clauses over deep nesting ---
+    curly_braces_in_flow_control_structures: true
+    prefer_final_locals: true
+    prefer_final_in_for_each: true
+
+    # --- Article IV: no magic numbers hiding in conditions ---
+    # Dart has no direct magic-number lint; these catch the common shapes of it.
+    prefer_const_declarations: true
+    avoid_field_initializers_in_const_classes: true
+
+    # --- Correctness rules that matter more than usual here ---
+    # An import that decodes an hour of audio must not silently swallow a failure
+    # or leak a future; every one of these has a specific way to bite this feature.
+    unawaited_futures: true
+    avoid_slow_async_io: true
+    cancel_subscriptions: true
+    close_sinks: true
+    always_declare_return_types: true
+    avoid_void_async: true
+    only_throw_errors: true
+
+    # --- Article XI-adjacent: no debugging residue in shipped code ---
+    avoid_print: true
+
+    unnecessary_string_escapes: false
+
+formatter:
+  page_width: 120

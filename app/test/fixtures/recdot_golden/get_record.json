@@ -1,0 +1,40 @@
+{
+  "cases": [
+    {
+      "expected": {
+        "payload_hex": "02010105020201000005030d0c0b0a050410000000"
+      },
+      "input": {
+        "index": 258,
+        "length": 16,
+        "offset": 168496141,
+        "side": 1
+      },
+      "name": "start_download"
+    },
+    {
+      "expected": {
+        "payload_hex": "020100050207000000050300000000050400fa0000050531323334"
+      },
+      "input": {
+        "index": 7,
+        "length": 64000,
+        "offset": 0,
+        "password": "1234",
+        "side": 0
+      },
+      "name": "start_with_password"
+    },
+    {
+      "expected": {
+        "payload_hex": "01ff"
+      },
+      "input": {
+        "cancel": true
+      },
+      "name": "cancel"
+    }
+  ],
+  "generator": "scripts/generate_recdot_vectors.py",
+  "source": "scripts/recdot_wire.py"
+}

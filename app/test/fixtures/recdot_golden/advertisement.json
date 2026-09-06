@@ -1,0 +1,61 @@
+{
+  "cases": [
+    {
+      "expected": {
+        "case_battery_percent": null,
+        "feature": 0,
+        "is_case_charging": false,
+        "is_left_charging": false,
+        "is_right_charging": false,
+        "left_battery_percent": 0,
+        "left_mac": "20:FF:36:E9:2A:64",
+        "product_id": 8,
+        "right_battery_percent": null,
+        "right_mac": "20:FF:36:E9:08:E0"
+      },
+      "input_hex": "08080800ffff304120ff36e92a6420ff36e908e000",
+      "name": "real_recdot_iphone_2026_09_06"
+    },
+    {
+      "expected": {
+        "case_battery_percent": null,
+        "feature": 0,
+        "is_case_charging": false,
+        "is_left_charging": false,
+        "is_right_charging": false,
+        "left_battery_percent": 0,
+        "left_mac": "20:FF:36:E9:2A:64",
+        "product_id": 6908,
+        "right_battery_percent": null,
+        "right_mac": "20:FF:36:E9:08:E0"
+      },
+      "input_hex": "08450000ffff304120ff36e92a6420ff36e908e000",
+      "name": "open_note_prefix_letter_e"
+    },
+    {
+      "expected": {
+        "case_battery_percent": null,
+        "feature": 0,
+        "is_case_charging": false,
+        "is_left_charging": true,
+        "is_right_charging": false,
+        "left_battery_percent": 55,
+        "left_mac": "20:FF:36:E9:2A:64",
+        "product_id": 9,
+        "right_battery_percent": 60,
+        "right_mac": "20:FF:36:E9:08:E0"
+      },
+      "input_hex": "090000b73cff304120ff36e92a6420ff36e908e000",
+      "name": "recdot2_left_charging"
+    },
+    {
+      "expected": {
+        "error": "too_short"
+      },
+      "input_hex": "0000000000000000000000000000000000000000",
+      "name": "too_short_refused"
+    }
+  ],
+  "generator": "scripts/generate_recdot_vectors.py",
+  "source": "scripts/recdot_wire.py"
+}

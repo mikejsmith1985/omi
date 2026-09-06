@@ -1,0 +1,37 @@
+{
+  "cases": [
+    {
+      "expected": {
+        "mic_hex": "28292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f",
+        "speaker_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f2021222324252627"
+      },
+      "input_hex": "03000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f",
+      "name": "both_channels"
+    },
+    {
+      "expected": {
+        "mic_hex": "",
+        "speaker_hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f2021222324252627"
+      },
+      "input_hex": "01000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f2021222324252627",
+      "name": "speaker_only"
+    },
+    {
+      "expected": {
+        "mic_hex": "28292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f",
+        "speaker_hex": ""
+      },
+      "input_hex": "f228292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f",
+      "name": "mic_only_upper_nibble_ignored"
+    },
+    {
+      "expected": {
+        "error": "odd_length"
+      },
+      "input_hex": "030000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "name": "odd_two_channel_refused"
+    }
+  ],
+  "generator": "scripts/generate_recdot_vectors.py",
+  "source": "scripts/recdot_wire.py"
+}

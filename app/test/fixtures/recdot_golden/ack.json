@@ -1,0 +1,36 @@
+{
+  "cases": [
+    {
+      "expected": {
+        "data_hex": "0203",
+        "is_ack": true,
+        "opcode": 20737,
+        "status": 0
+      },
+      "input_hex": "5507d101000203",
+      "name": "ack_status_ok_with_data"
+    },
+    {
+      "expected": {
+        "data_hex": "",
+        "is_ack": true,
+        "opcode": 20737,
+        "status": 6
+      },
+      "input_hex": "5505d10106",
+      "name": "ack_status_incorrect_state"
+    },
+    {
+      "expected": {
+        "data_hex": "",
+        "is_ack": false,
+        "opcode": 21771,
+        "status": null
+      },
+      "input_hex": "5504550b",
+      "name": "plain_command_has_no_status"
+    }
+  ],
+  "generator": "scripts/generate_recdot_vectors.py",
+  "source": "scripts/recdot_wire.py"
+}
