@@ -210,6 +210,21 @@ workflows:
           echo "latest on App Store Connect: $latest -> building $next"
           echo "OMI_BUILD_NUMBER=$next" >> $CM_ENV
 
+      - name: Use the personal App Group and drop unregistered capabilities
+        script: |
+          # The dogfood bundle id is com.mikejsmith.omi, but the checked-in entitlements
+          # hardcode the upstream App Group group.com.friend-app-with-wearable.ios12, which the
+          # personal signing profiles do not include. This is a dogfood build for one device; the
+          # App Group only backs the battery widget's shared storage, which pairing does not use.
+          # Remove the App Group entitlement so the auto-created profiles match. Upstream source is
+          # untouched — this edits only the build's working copy.
+          for f in ios/Runner/Runner.entitlements ios/Runner/Runner*-dev.entitlements \
+                   ios/Runner/Runner*-prod.entitlements ios/BatteryWidget/BatteryWidget.entitlements; do
+            [ -f "$f" ] || continue
+            /usr/libexec/PlistBuddy -c "Delete :com.apple.security.application-groups" "$f" 2>/dev/null \
+              && echo "stripped app group from $f" || echo "no app group in $f"
+          done
+
       - name: Build ipa
         script: |
           # Failed script steps keep no logUrl in the Codemagic API (only built-in steps do),
