@@ -160,7 +160,6 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				A0A492964674B881B8E56B3E /* BatteryWidget.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -171,7 +170,6 @@
 			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
 			dstSubfolderSpec = 16;
 			files = (
-				42A7BA3E2E788BD400138969 /* omiWatchApp.app in Embed Watch Content */,
 			);
 			name = "Embed Watch Content";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -654,8 +652,6 @@
 			buildRules = (
 			);
 			dependencies = (
-				468E5B26D379E32080A67B11 /* PBXTargetDependency */,
-				42A7BA3D2E788BD400138969 /* PBXTargetDependency */,
 			);
 			name = Runner;
 			productName = Runner;
