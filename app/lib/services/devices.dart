@@ -7,6 +7,7 @@ import 'package:omi/backend/schema/bt_device/bt_device.dart';
 import 'package:omi/services/devices/connectors/device_connection.dart';
 import 'package:omi/services/devices/discovery/apple_watch_discoverer.dart';
 import 'package:omi/services/devices/discovery/rayban_meta_discoverer.dart';
+import 'package:omi/services/devices/discovery/viaim_recdot_discoverer.dart';
 import 'package:omi/services/devices/discovery/device_discoverer.dart';
 import 'package:omi/services/devices/discovery/native_bluetooth_discoverer.dart';
 import 'package:omi/utils/debug_log_manager.dart';
@@ -50,6 +51,7 @@ class DeviceService {
     NativeBluetoothDiscoverer(),
     AppleWatchDiscoverer(),
     RayBanMetaDiscoverer(),
+    ViaimRecDotDiscoverer(),
   ];
 
   final Map<Object, IDeviceServiceSubsciption> _subscriptions = {};
