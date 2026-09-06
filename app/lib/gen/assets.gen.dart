@@ -321,6 +321,10 @@ class $AssetsImagesGen {
   AssetGenImage get telegramLogo =>
       const AssetGenImage('assets/images/telegram_logo.png');
 
+  /// File path: assets/images/viaim_recdot.png
+  AssetGenImage get viaimRecdot =>
+      const AssetGenImage('assets/images/viaim_recdot.png');
+
   /// File path: assets/images/whatsapp_logo.png
   AssetGenImage get whatsappLogo =>
       const AssetGenImage('assets/images/whatsapp_logo.png');
@@ -406,6 +410,7 @@ class $AssetsImagesGen {
         stars,
         stripeLogo,
         telegramLogo,
+        viaimRecdot,
         whatsappLogo,
         xLogo,
         xLogoMini,

@@ -1290,6 +1290,9 @@ class CaptureController extends ChangeNotifier
       // Ray-Ban Meta audio is bridged from the platform HFP route, so there is
       // no native BLE GATT target; capture runs on the foreground Dart path.
       case DeviceType.raybanMeta:
+      // viaim RecDot audio arrives over an accessory/RFCOMM link, not GATT, so
+      // it too has no native BLE target and runs on the foreground Dart path.
+      case DeviceType.viaimRecDot:
         return null;
     }
   }

@@ -105,6 +105,7 @@ enum ConversationSource {
   desktop,
   limitless,
   rayban_meta,
+  viaim_recdot,
 }
 
 class ConversationExternalData {

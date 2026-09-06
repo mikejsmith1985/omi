@@ -15,6 +15,7 @@ void main() {
         DeviceType.friendPendant: 'friend',
         DeviceType.limitless: 'limitless',
         DeviceType.raybanMeta: 'meta',
+        DeviceType.viaimRecDot: 'viaim',
       },
     );
   });

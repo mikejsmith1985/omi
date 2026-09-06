@@ -120,6 +120,14 @@ class DeviceConnectionFactory {
       case TransportKind.metaDat:
         transport = RayBanMetaTransport(device.id);
         break;
+
+      // The viaim RecDot transports (External Accessory on iOS, RFCOMM on
+      // Android) and its connection land in the following commit; until then the
+      // discoverer does not yield a RecDot, so these arms are unreachable at
+      // runtime and exist only to keep the exhaustive switch honest.
+      case TransportKind.externalAccessory:
+      case TransportKind.bluetoothClassic:
+        throw UnimplementedError('viaim RecDot transport is added in the next change');
     }
 
     switch (device.type) {
@@ -146,6 +154,8 @@ class DeviceConnectionFactory {
         return LimitlessDeviceConnection(device, transport);
       case DeviceType.raybanMeta:
         return RayBanMetaDeviceConnection(device, transport);
+      case DeviceType.viaimRecDot:
+        throw UnimplementedError('viaim RecDot connection is added in the next change');
     }
   }
 }

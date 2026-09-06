@@ -705,6 +705,7 @@ class AnalyticsManager {
       DeviceType.appleWatch => 'watch_identifier',
       DeviceType.limitless => 'limitless_identifier',
       DeviceType.raybanMeta => 'rayban_identifier',
+      DeviceType.viaimRecDot => 'accessory_identifier',
       _ => 'ble_identifier',
     };
     return {

@@ -31,7 +31,7 @@ class FirmwareUpdateBuildPolicy {
   }
 
   bool allowsFirmwareUpdateForDevice(BtDevice? device) {
-    if (device?.type == DeviceType.raybanMeta) return false;
+    if (device?.type == DeviceType.raybanMeta || device?.type == DeviceType.viaimRecDot) return false;
     return allowsFirmwareUpdate(isOpenGlass: isOpenGlassDevice(device));
   }
 }

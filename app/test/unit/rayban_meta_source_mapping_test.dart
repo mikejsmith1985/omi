@@ -32,6 +32,7 @@ void main() {
         DeviceType.friendPendant: 'friend_com',
         DeviceType.limitless: 'limitless',
         DeviceType.raybanMeta: 'rayban_meta',
+        DeviceType.viaimRecDot: 'viaim_recdot',
       };
 
       // Fails if a DeviceType is added without a mapping entry here, forcing the

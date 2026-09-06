@@ -57,6 +57,7 @@ class ConversationSource(str, Enum):
     external_integration = 'external_integration'
     limitless = 'limitless'
     rayban_meta = 'rayban_meta'
+    viaim_recdot = 'viaim_recdot'
     onboarding = 'onboarding'
     unknown = 'unknown'
 

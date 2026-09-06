@@ -207,7 +207,7 @@ int mapCodecToBitDepth(BleAudioCodec codec) {
   }
 }
 
-enum DeviceType { omi, openglass, appleWatch, plaud, bee, fieldy, friendPendant, limitless, raybanMeta }
+enum DeviceType { omi, openglass, appleWatch, plaud, bee, fieldy, friendPendant, limitless, raybanMeta, viaimRecDot }
 
 extension DeviceTypeAnalytics on DeviceType {
   String get analyticsVendor {
@@ -229,6 +229,8 @@ extension DeviceTypeAnalytics on DeviceType {
         return 'limitless';
       case DeviceType.raybanMeta:
         return 'meta';
+      case DeviceType.viaimRecDot:
+        return 'viaim';
     }
   }
 }
@@ -245,6 +247,7 @@ const List<String> _legacyDeviceTypeNames = [
   'friendPendant',
   'limitless',
   'raybanMeta',
+  'viaimRecDot',
 ];
 
 DeviceType _deviceTypeFromJson(dynamic raw) {
@@ -401,6 +404,8 @@ class BtDevice {
       return await _getDeviceInfoFromAppleWatch(conn as AppleWatchDeviceConnection);
     } else if (type == DeviceType.raybanMeta) {
       return _getDeviceInfoFromRayBanMeta();
+    } else if (type == DeviceType.viaimRecDot) {
+      return _getDeviceInfoFromViaim();
     } else {
       return await _getDeviceInfoFromOmi(conn);
     }
@@ -415,6 +420,19 @@ class BtDevice {
       hardwareRevision: 'Unknown',
       manufacturerName: 'Meta',
       type: DeviceType.raybanMeta,
+    );
+  }
+
+  // The RecDot is reached over an accessory session, not GATT; its serial and
+  // firmware arrive over the STAROT link and are filled in by the connector, so
+  // static identity is all this static path reports.
+  BtDevice _getDeviceInfoFromViaim() {
+    return copyWith(
+      modelNumber: 'viaim RecDot',
+      firmwareRevision: 'Unknown',
+      hardwareRevision: 'Unknown',
+      manufacturerName: 'viaim',
+      type: DeviceType.viaimRecDot,
     );
   }
 
@@ -658,6 +676,7 @@ class BtDevice {
       case DeviceType.openglass:
       case DeviceType.appleWatch:
       case DeviceType.raybanMeta:
+      case DeviceType.viaimRecDot:
         return ''; // No warning needed
     }
   }
@@ -696,6 +715,7 @@ class BtDevice {
       case DeviceType.openglass:
       case DeviceType.appleWatch:
       case DeviceType.raybanMeta:
+      case DeviceType.viaimRecDot:
         return ''; // No warning needed
     }
   }

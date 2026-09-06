@@ -19,6 +19,7 @@ void main() {
       expect(DeviceUtils.analyticsHardwareFamily(device(DeviceType.limitless, 'Limitless Pendant')), 'limitless');
       expect(DeviceUtils.analyticsHardwareFamily(device(DeviceType.friendPendant, 'Model 1')), 'friend_pendant');
       expect(DeviceUtils.analyticsHardwareFamily(device(DeviceType.raybanMeta, 'Ray-Ban Meta')), 'rayban_meta');
+      expect(DeviceUtils.analyticsHardwareFamily(device(DeviceType.viaimRecDot, 'viaim RecDot')), 'viaim_recdot');
     });
   });
 

@@ -1,4 +1,4 @@
-enum TransportKind { bluetooth, watchConnectivity, metaDat }
+enum TransportKind { bluetooth, watchConnectivity, metaDat, externalAccessory, bluetoothClassic }
 
 class DeviceLocator {
   final TransportKind kind;
@@ -25,6 +25,18 @@ class DeviceLocator {
     return DeviceLocator._(kind: TransportKind.metaDat, extras: extras);
   }
 
+  // viaim RecDot earbuds reached over an MFi External Accessory session (iOS);
+  // the accessory is matched by its protocol string, so no id is needed here.
+  factory DeviceLocator.externalAccessory({Map<String, Object?> extras = const {}}) {
+    return DeviceLocator._(kind: TransportKind.externalAccessory, extras: extras);
+  }
+
+  // viaim RecDot over a Classic Bluetooth RFCOMM socket (Android); the bud's
+  // Classic address is carried on bluetoothId.
+  factory DeviceLocator.bluetoothClassic({required String address, Map<String, Object?> extras = const {}}) {
+    return DeviceLocator._(kind: TransportKind.bluetoothClassic, bluetoothId: address, extras: extras);
+  }
+
   // Serialization
   Map<String, dynamic> toJson() {
     return {'kind': kind.index, 'bluetoothId': bluetoothId, 'extras': extras};
@@ -48,6 +60,10 @@ class DeviceLocator {
         return DeviceLocator.watchConnectivity(extras: extras);
       case TransportKind.metaDat:
         return DeviceLocator.metaDat(extras: extras);
+      case TransportKind.externalAccessory:
+        return DeviceLocator.externalAccessory(extras: extras);
+      case TransportKind.bluetoothClassic:
+        return DeviceLocator._(kind: TransportKind.bluetoothClassic, bluetoothId: bluetoothId, extras: extras);
     }
   }
 }

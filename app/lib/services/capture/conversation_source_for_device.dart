@@ -36,5 +36,7 @@ String? conversationSourceForDeviceType(DeviceType? type) {
       return 'limitless';
     case DeviceType.raybanMeta:
       return 'rayban_meta';
+    case DeviceType.viaimRecDot:
+      return 'viaim_recdot';
   }
 }

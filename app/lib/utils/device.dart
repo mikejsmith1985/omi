@@ -34,6 +34,8 @@ class DeviceUtils {
         return 'limitless';
       case DeviceType.raybanMeta:
         return 'rayban_meta';
+      case DeviceType.viaimRecDot:
+        return 'viaim_recdot';
     }
   }
 
@@ -144,6 +146,8 @@ class DeviceUtils {
           return Assets.images.friendPendant.path;
         case DeviceType.raybanMeta:
           return Assets.images.raybanMeta.path;
+        case DeviceType.viaimRecDot:
+          return Assets.images.viaimRecdot.path;
         case DeviceType.omi:
           // For omi type, need to check model/name to distinguish between devkit and regular omi
           if (modelNumber != null && modelNumber.isNotEmpty && modelNumber.toUpperCase() != 'UNKNOWN') {
