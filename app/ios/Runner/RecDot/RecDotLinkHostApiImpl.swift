@@ -42,10 +42,20 @@ final class RecDotLinkHostApiImpl: NSObject, RecDotLinkHostAPI {
     }
 
     func listAccessories(completion: @escaping (Result<[RecDotAccessory], Error>) -> Void) {
-        let accessories = recDotAccessories().map { accessory in
-            RecDotAccessory(
+        // DIAGNOSTIC (build-branch only): report EVERY connected accessory and the protocol
+        // strings iOS says it supports, so we can see what the RecDot actually exposes rather
+        // than silently filtering to com.vision.voyager. The name carries the protocols.
+        let all = manager.connectedAccessories
+        if all.isEmpty {
+            let marker = RecDotAccessory(deviceId: "diag-empty", name: "EA: none connected", serialNumber: nil, firmwareRevision: nil)
+            completion(.success([marker]))
+            return
+        }
+        let accessories = all.map { accessory in
+            let protocols = accessory.protocolStrings.isEmpty ? "no-protocols" : accessory.protocolStrings.joined(separator: ",")
+            return RecDotAccessory(
                 deviceId: deviceId(for: accessory),
-                name: accessory.name,
+                name: "\(accessory.name) | \(protocols)",
                 serialNumber: accessory.serialNumber.isEmpty ? nil : accessory.serialNumber,
                 firmwareRevision: accessory.firmwareRevision.isEmpty ? nil : accessory.firmwareRevision)
         }
