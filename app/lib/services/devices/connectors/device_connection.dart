@@ -15,6 +15,7 @@ import 'package:omi/services/devices/connectors/omi_connection.dart';
 import 'package:omi/services/devices/connectors/omiglass_connection.dart';
 import 'package:omi/services/devices/connectors/plaud_connection.dart';
 import 'package:omi/services/devices/connectors/rayban_meta_connection.dart';
+import 'package:omi/services/devices/connectors/viaim_recdot_connection.dart';
 import 'package:omi/services/devices/transports/device_transport.dart';
 import 'package:omi/services/devices/transports/native_ble_transport.dart';
 import 'package:omi/services/devices/transports/rayban_meta_transport.dart';
@@ -156,7 +157,7 @@ class DeviceConnectionFactory {
       case DeviceType.raybanMeta:
         return RayBanMetaDeviceConnection(device, transport);
       case DeviceType.viaimRecDot:
-        throw UnimplementedError('viaim RecDot connection is added in the next change');
+        return ViaimRecDotConnection(device, transport);
     }
   }
 }
