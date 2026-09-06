@@ -1,4 +1,245 @@
 workflows:
+
+  ios-personal-dogfood:
+    name: Personal iOS dogfood build
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    integrations:
+      # Name of the App Store Connect integration you create in Codemagic settings.
+      app_store_connect: "RLL_Codemagic_CI_AppManager"
+    environment:
+      # Holds CERTIFICATE_PRIVATE_KEY, the RSA key `fetch-signing-files --create` signs the
+      # new distribution certificate with. Without it the CLI fails with "Cannot save
+      # Signing Certificates without certificate private key".
+      groups:
+        - apple_signing
+      # No `ios_signing:` block. That form only *fetches* profiles that already exist and
+      # fails with "No matching profiles found" on a fresh Apple team. Signing files are
+      # created instead by the CLI steps below, which is the flow Codemagic's own
+      # automatic-code-signing sample uses.
+      vars:
+        # From App Store Connect once you create the app record. NOT Omi's 6502156163.
+        APP_ID: "6802326663"
+        # A bundle id you own and have registered on your Apple team.
+        OMI_PERSONAL_BUNDLE_ID: "com.mikejsmith.omi"
+        # Where the app should look for the backend. Your PC's LAN address, because
+        # 127.0.0.1 on the phone means the phone. Run `ipconfig` on Windows.
+        # Must be reachable from the iPhone — same Wi-Fi, firewall open on 8000.
+        OMI_API_BASE_URL: "http://192.168.4.127:8000/"
+        OMI_FIREBASE_AUTH_EMULATOR_HOST: "192.168.4.127"
+      # Match what upstream's mobile workflows pin, so you hit the same toolchain
+      # their CI does rather than debugging a version difference that is yours alone.
+      flutter: 3.44.5
+      xcode: 26.0.1
+      cocoapods: 1.16.2
+    cache:
+      cache_paths:
+        # Only pub. The CocoaPods CDN cache is deliberately not persisted: a run that
+        # dies partway through a spec fetch leaves an incomplete cache, and every later
+        # build then re-resolves from the CDN and trips GitHub's rate limit.
+        - $HOME/.pub-cache
+    working_directory: app
+    scripts:
+      - name: Install Opus
+        script: |
+          brew install opus
+          brew install opus-tools
+
+      # setup.sh's dev path, unrolled. The script itself ends in `flutter run`,
+      # which wants an attached device, so CI cannot call it directly — these are
+      # the same preparation steps it performs before that point.
+      - name: Firebase config from this fork's own project
+        script: |
+          # setup/prebuilt/GoogleService-Info-Local.plist is emulator scaffolding: its
+          # GOOGLE_APP_ID and API_KEY are placeholders, and upstream never ships it to an
+          # iOS build — their workflow generates real config with flutterfire and writes
+          # the plist from GOOGLE_INFO_PLIST_KEY. Handing the placeholders to the native
+          # Firebase SDK is what aborted this app during didFinishLaunching, before Dart
+          # main() ever ran. GOOGLE_INFO_PLIST holds a real plist from a Firebase project
+          # registered against this fork's bundle id.
+          mkdir -p ios/Config/Dev ios/Config/Prod ios/Runner
+          printf '%s' "$GOOGLE_INFO_PLIST" > ios/Runner/GoogleService-Info.plist
+          cp ios/Runner/GoogleService-Info.plist ios/Config/Dev/GoogleService-Info.plist
+          cp ios/Runner/GoogleService-Info.plist ios/Config/Prod/GoogleService-Info.plist
+
+          read_key() { /usr/libexec/PlistBuddy -c "Print :$1" ios/Runner/GoogleService-Info.plist; }
+          FB_PROJECT_ID=$(read_key PROJECT_ID)
+          FB_API_KEY=$(read_key API_KEY)
+          FB_APP_ID=$(read_key GOOGLE_APP_ID)
+          FB_SENDER_ID=$(read_key GCM_SENDER_ID)
+          FB_BUCKET=$(read_key STORAGE_BUCKET)
+          FB_BUNDLE_ID=$(read_key BUNDLE_ID)
+
+          if [ "$FB_BUNDLE_ID" != "$OMI_PERSONAL_BUNDLE_ID" ]; then
+            echo "GoogleService-Info.plist is registered to $FB_BUNDLE_ID but this app is $OMI_PERSONAL_BUNDLE_ID" >&2
+            exit 1
+          fi
+
+          # Native Google sign-in needs the OAuth callback URL scheme, which
+          # generate_ios_custom_config.sh reads from REVERSED_CLIENT_ID. That key only
+          # appears in the plist once Google is enabled under Firebase Authentication →
+          # Sign-in method. Failing here costs seconds; finding out on the device costs a
+          # whole build.
+          if ! /usr/libexec/PlistBuddy -c "Print :REVERSED_CLIENT_ID" ios/Runner/GoogleService-Info.plist >/dev/null 2>&1; then
+            echo "GoogleService-Info.plist has no REVERSED_CLIENT_ID." >&2
+            echo "Enable Google under Firebase Console → Authentication → Sign-in method," >&2
+            echo "re-download the plist, and update GOOGLE_INFO_PLIST in Codemagic." >&2
+            exit 1
+          fi
+
+          # The Dart options must describe the same project as the plist, or
+          # Env.validateFirebaseProject throws once Flutter starts. Substituting the
+          # placeholders keeps the generated files' shape and only swaps identity.
+          cp lib/firebase_options_local.dart lib/firebase_options_prod.dart
+          # Substitute by field name rather than by placeholder value. Matching the
+          # exact placeholder strings upstream happened to ship is brittle: two of
+          # them changed, those substitutions silently did nothing, and the app
+          # started with a real project id beside a placeholder apiKey. Firebase
+          # rejects that mismatch against the native plist as [core/duplicate-app].
+          for dart in lib/firebase_options_local.dart lib/firebase_options_prod.dart; do
+            sed -i '' -E "s|apiKey: '[^']*'|apiKey: '${FB_API_KEY}'|g" "$dart"
+            sed -i '' -E "s|appId: '[^']*'|appId: '${FB_APP_ID}'|g" "$dart"
+            sed -i '' -E "s|messagingSenderId: '[^']*'|messagingSenderId: '${FB_SENDER_ID}'|g" "$dart"
+            sed -i '' -E "s|projectId: '[^']*'|projectId: '${FB_PROJECT_ID}'|g" "$dart"
+            sed -i '' -E "s|storageBucket: '[^']*'|storageBucket: '${FB_BUCKET}'|g" "$dart"
+            sed -i '' -E "s|authDomain: '[^']*'|authDomain: '${FB_PROJECT_ID}.firebaseapp.com'|g" "$dart"
+            sed -i '' -E "s|iosBundleId: '[^']*'|iosBundleId: '${OMI_PERSONAL_BUNDLE_ID}'|g" "$dart"
+
+            # Fail closed. A surviving placeholder means the app would launch with a
+            # half-real Firebase identity, which is the failure described above.
+            # Quoted values only. The file's header comment names demo-omi-local,
+            # and matching that would fail every build on a line of prose.
+            if grep -nE "'[^']*(demo-omi-local|DEMOOMILOCAL|1:000000000000:|friend-app-with-wearable)[^']*'" "$dart"; then
+              echo "a Firebase placeholder survived substitution in $dart" >&2
+              exit 1
+            fi
+          done
+
+          # local_dev pins demo-omi-local as the only project it will accept. This fork
+          # runs its own, so the profile's expectation moves with it.
+          sed -i '' "s|firebaseProjectId: 'demo-omi-local'|firebaseProjectId: '${FB_PROJECT_ID}'|" lib/env/environment_profile.dart
+
+          echo "--- firebase identity ---"
+          echo "project : $FB_PROJECT_ID"
+          echo "bundle  : $FB_BUNDLE_ID"
+          grep -n "firebaseProjectId: '${FB_PROJECT_ID}'" lib/env/environment_profile.dart
+          grep -c "demo-omi-local" lib/firebase_options_local.dart lib/env/environment_profile.dart || true
+
+      - name: Generate iOS Info.plist and custom config
+        script: |
+          # Dev flavor: local_dev is the only profile that accepts the demo-omi-local
+          # Firebase project this fork has, and Env.validateProfilePairing refuses
+          # local_dev on the prod flavor. project.pbxproj is patched on this branch so
+          # the dev widget id is `.widget`, which App Store Connect accepts.
+          bash scripts/generate_ios_dev_info_plist.sh
+          bash scripts/generate_ios_custom_config.sh ios/Config/Dev/GoogleService-Info.plist ios/Flutter
+          echo "APP_BUNDLE_IDENTIFIER=${OMI_PERSONAL_BUNDLE_ID}" >> ios/Flutter/Custom.xcconfig
+          echo "AUTH_CALLBACK_SCHEME=omi-dev" >> ios/Flutter/Custom.xcconfig
+
+      - name: Write .dev.env
+        script: |
+          # The dev flavor's EnvFields reads `.dev.env` (lib/env/dev_env.dart).
+          touch .dev.env
+          {
+            echo "API_BASE_URL=${OMI_API_BASE_URL}"
+            # false routes iOS sign-in through signInWithAppleMobile — the native flow,
+            # which talks to Firebase Auth (pointed at the local emulator) directly. true
+            # sends it to the backend's /v1/auth/apple redirect, which needs APPLE_CLIENT_ID
+            # and BASE_API_URL and a Services ID registered on the Apple team; the harness
+            # has none of those and answers "Apple client ID not configured".
+            echo "USE_WEB_AUTH=false"
+            echo "USE_AUTH_CUSTOM_TOKEN=true"
+          } >> .dev.env
+
+      - name: Flutter dependencies and codegen
+        script: |
+          flutter pub get
+          dart run build_runner build --delete-conflicting-outputs
+
+      - name: CocoaPods with retry
+        script: |
+          # Resolution reads the CocoaPods CDN, which redirects to
+          # raw.githubusercontent.com and returns 429 under load. That is transient and
+          # shared across the runner pool, so a short backoff clears it. No
+          # --repo-update: Podfile.lock already pins every version, and forcing a full
+          # index refresh is what triggered the rate limit in the first place.
+          cd ios
+          for attempt in 1 2 3 4 5; do
+            if pod install; then
+              echo "pod install succeeded on attempt $attempt"
+              exit 0
+            fi
+            echo "pod install failed on attempt $attempt; backing off"
+            sleep $((attempt * 20))
+          done
+          echo "pod install failed after 5 attempts" >&2
+          exit 1
+
+      - name: Set up keychain
+        script: keychain initialize
+
+      - name: Fetch or create signing files
+        script: |
+          # --create makes the certificate and provisioning profile when they do not exist
+          # yet. Each extension needs its own profile, so all three bundle ids are fetched.
+          #
+          # Release-prod names the widget `.widget` — one period after the app id, which
+          # is the shape App Store Connect requires of an extension. The watch app is
+          # `.watchapp` in every configuration.
+          app-store-connect fetch-signing-files "$OMI_PERSONAL_BUNDLE_ID" --type IOS_APP_STORE --create
+          app-store-connect fetch-signing-files "$OMI_PERSONAL_BUNDLE_ID.widget" --type IOS_APP_STORE --create
+          app-store-connect fetch-signing-files "$OMI_PERSONAL_BUNDLE_ID.watchapp" --type IOS_APP_STORE --create
+
+      - name: Add certificates to keychain
+        script: keychain add-certificates
+
+      - name: Apply profiles to the Xcode project
+        script: xcode-project use-profiles
+
+      - name: Resolve the next build number
+        script: |
+          # pubspec pins 1.0.543+992 and that build number is already uploaded; App
+          # Store Connect rejects a repeat. Ask it what the highest is and go one past,
+          # so the value never depends on how many times this workflow has run.
+          latest=$(app-store-connect get-latest-build-number "$APP_ID" 2>/dev/null || true)
+          if [ -z "$latest" ]; then
+            echo "no builds on App Store Connect yet; falling back to the pubspec value"
+            latest=$(grep '^version:' pubspec.yaml | sed 's/.*+//')
+          fi
+          next=$((latest + 1))
+          echo "latest on App Store Connect: $latest -> building $next"
+          echo "OMI_BUILD_NUMBER=$next" >> $CM_ENV
+
+      - name: Build ipa
+        script: |
+          flutter build ipa \
+            --release \
+            --build-number="${OMI_BUILD_NUMBER}" \
+            --flavor dev \
+            --dart-define=OMI_APP_PROFILE=local_dev \
+            --dart-define=OMI_API_BASE_URL="${OMI_API_BASE_URL}" \
+            --dart-define=OMI_FIREBASE_AUTH_EMULATOR_HOST="${OMI_FIREBASE_AUTH_EMULATOR_HOST}" \
+            --export-options-plist=$HOME/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+      # dSYMs so a TestFlight crash arrives symbolicated. Without them the Runner
+      # frames are bare addresses and there is no way to tell which statically linked
+      # pod raised.
+      - build/ios/archive/Runner.xcarchive/dSYMs/**/*.dSYM
+      - flutter_drive.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        # Upload only. submit_to_testflight submits for TestFlight *beta review*, which is
+        # the external-testing path and demands Beta App Information and Beta App Review
+        # Information — feedback email, contact name, phone. None of that applies to a
+        # one-person dogfood build.
+        #
+        # Internal testers get processed builds immediately, with no review and no
+        # metadata, so the upload alone is enough to install on your own device.
+        submit_to_testflight: false
+        submit_to_app_store: false
+
   # ============================================
   # AUTO-DEPLOY WORKFLOWS (Triggered on push to main)
   # ============================================
@@ -1816,8 +2057,8 @@ workflows:
 
   # ============================================
   # OMI DESKTOP SWIFT RELEASE
-  # Builds, signs, notarizes, and publishes the Swift macOS app from desktop/macos/.
-  # Source code lives directly in desktop/macos/ (monorepo).
+  # Builds, signs, notarizes, and publishes the Swift macOS app from omi/desktop/macos/.
+  # Source code lives directly in omi/desktop/macos/ (monorepo).
   #
   # Trigger: push a tag like v0.0.10+10-macos to BasedHardware/omi
   #   git tag v0.0.10+10-macos && git push origin v0.0.10+10-macos
@@ -1879,9 +2120,12 @@ workflows:
         GCS_DESKTOP_UPDATES_BUCKET: "gs://omi_macos_updates"
         DMGBUILD_VERSION: "1.6.7"
       xcode: 16.4
-    # API-dispatched by desktop_auto_release.yml after its exact tag is pushed.
-    # Keeping this workflow manual prevents a webhook/API race from creating
-    # duplicate builds for one immutable candidate.
+    triggering:
+      events:
+        - tag
+      tag_patterns:
+        - pattern: "v*-macos"
+          include: true
     working_directory: desktop/macos
     cache:
       cache_paths:
@@ -2750,10 +2994,9 @@ workflows:
           fi
           set -euo pipefail
 
-          # Keep symbol publication repairable: a Sentry credential outage must not
-          # strand an otherwise signed and smoke-tested candidate. The exact,
-          # UUID-verified dSYM is retained as a GitHub release artifact below.
-          scripts/publish-desktop-debug-symbols.sh upload-best-effort \
+          # Symbolication is a release requirement, not best-effort publishing.
+          # Upload the UUID-verified dSYM before creating the immutable candidate.
+          scripts/publish-desktop-debug-symbols.sh upload \
             --binary "$APP_BUNDLE/Contents/MacOS/$BINARY_NAME" \
             --dsym "$DSYM_PATH"
 
