@@ -95,6 +95,7 @@ final class QuickActionsIconPatcher: NSObject {
   var session: WCSession?
     var flutterWatchAPI: WatchRecorderFlutterAPI?
     var rayBanMetaHostApi: RayBanMetaHostApiImpl?
+    var recDotLinkHostApi: RecDotLinkHostApiImpl?
   private var audioChunks: [Int: (Data, Double)] = [:] // (audioData, sampleRate)
   private var nextExpectedChunkIndex: Int = 0
   private var isRecordingActive: Bool = false // Track recording state to handle app restarts
@@ -140,6 +141,15 @@ final class QuickActionsIconPatcher: NSObject {
           let rayBanApi = RayBanMetaHostApiImpl(flutterAPI: rayBanFlutterApi)
           rayBanMetaHostApi = rayBanApi
           RayBanMetaHostAPISetup.setUp(binaryMessenger: messenger, api: rayBanApi)
+      }
+
+      // viaim RecDot link — an MFi External Accessory session (com.vision.voyager).
+      // The native side is a byte pipe; STAROT framing lives in Dart.
+      if let messenger = (window?.rootViewController as? FlutterViewController)?.binaryMessenger {
+          let recDotFlutterApi = RecDotLinkFlutterAPI(binaryMessenger: messenger)
+          let recDotApi = RecDotLinkHostApiImpl(flutterAPI: recDotFlutterApi)
+          recDotLinkHostApi = recDotApi
+          RecDotLinkHostAPISetup.setUp(binaryMessenger: messenger, api: recDotApi)
       }
 
       // Native phone-mic capture (conversation recording) — Pigeon APIs.

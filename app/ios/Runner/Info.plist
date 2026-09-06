@@ -170,6 +170,7 @@
 		<string>audio</string>
 		<string>location</string>
 		<string>bluetooth-central</string>
+		<string>external-accessory</string>
 		<string>fetch</string>
 		<string>processing</string>
 		<string>remote-notification</string>
@@ -190,6 +191,7 @@
 	<key>UISupportedExternalAccessoryProtocols</key>
 	<array>
 		<string>com.meta.ar.wearable</string>
+		<string>com.vision.voyager</string>
 	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>

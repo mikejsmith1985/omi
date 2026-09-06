@@ -456,6 +456,64 @@ class BluetoothHfpInput {
   int get hashCode => Object.hashAll(_toList());
 }
 
+/// One viaim RecDot the platform can reach: an MFi External Accessory on iOS,
+/// or a bonded-and-connected Classic Bluetooth headset on Android.
+class RecDotAccessory {
+  RecDotAccessory({
+    required this.deviceId,
+    required this.name,
+    this.serialNumber,
+    this.firmwareRevision,
+  });
+
+  String deviceId;
+
+  String name;
+
+  String? serialNumber;
+
+  String? firmwareRevision;
+
+  List<Object?> _toList() {
+    return <Object?>[
+      deviceId,
+      name,
+      serialNumber,
+      firmwareRevision,
+    ];
+  }
+
+  Object encode() {
+    return _toList();
+  }
+
+  static RecDotAccessory decode(Object result) {
+    result as List<Object?>;
+    return RecDotAccessory(
+      deviceId: result[0]! as String,
+      name: result[1]! as String,
+      serialNumber: result[2] as String?,
+      firmwareRevision: result[3] as String?,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! RecDotAccessory || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(encode(), other.encode());
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => Object.hashAll(_toList());
+}
+
 class _PigeonCodec extends StandardMessageCodec {
   const _PigeonCodec();
   @override
@@ -484,6 +542,9 @@ class _PigeonCodec extends StandardMessageCodec {
     } else if (value is BluetoothHfpInput) {
       buffer.putUint8(135);
       writeValue(buffer, value.encode());
+    } else if (value is RecDotAccessory) {
+      buffer.putUint8(136);
+      writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
     }
@@ -506,6 +567,8 @@ class _PigeonCodec extends StandardMessageCodec {
         return RayBanMetaGlasses.decode(readValue(buffer)!);
       case 135:
         return BluetoothHfpInput.decode(readValue(buffer)!);
+      case 136:
+        return RecDotAccessory.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
     }
@@ -2632,6 +2695,223 @@ abstract class RayBanMetaFlutterAPI {
               'Argument for dev.flutter.pigeon.omi_pigeon.RayBanMetaFlutterAPI.onError was null, expected non-null String.');
           try {
             api.onError(arg_code!, arg_message!);
+            return wrapResponse(empty: true);
+          } on PlatformException catch (e) {
+            return wrapResponse(error: e);
+          } catch (e) {
+            return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
+          }
+        });
+      }
+    }
+  }
+}
+
+/// Dart → native. The native side is a dumb byte pipe: it opens the link,
+/// writes exactly the bytes it is given, and forwards received bytes back.
+/// It never frames, retries, or interprets the STAROT protocol — that all
+/// lives in Dart above this. On iOS the link is an EASession on the
+/// com.vision.voyager protocol; on Android an RFCOMM socket on the SPP UUID.
+class RecDotLinkHostAPI {
+  /// Constructor for [RecDotLinkHostAPI].  The [binaryMessenger] named argument is
+  /// available for dependency injection.  If it is left null, the default
+  /// BinaryMessenger will be used which routes to the host platform.
+  RecDotLinkHostAPI({BinaryMessenger? binaryMessenger, String messageChannelSuffix = ''})
+      : pigeonVar_binaryMessenger = binaryMessenger,
+        pigeonVar_messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
+  final BinaryMessenger? pigeonVar_binaryMessenger;
+
+  static const MessageCodec<Object?> pigeonChannelCodec = _PigeonCodec();
+
+  final String pigeonVar_messageChannelSuffix;
+
+  /// The RecDots reachable right now — iOS: connected accessories advertising
+  /// the protocol; Android: bonded, connected headsets that look like a RecDot.
+  Future<List<RecDotAccessory>> listAccessories() async {
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.omi_pigeon.RecDotLinkHostAPI.listAccessories$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final List<Object?>? pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+    if (pigeonVar_replyList == null) {
+      throw _createConnectionError(pigeonVar_channelName);
+    } else if (pigeonVar_replyList.length > 1) {
+      throw PlatformException(
+        code: pigeonVar_replyList[0]! as String,
+        message: pigeonVar_replyList[1] as String?,
+        details: pigeonVar_replyList[2],
+      );
+    } else if (pigeonVar_replyList[0] == null) {
+      throw PlatformException(
+        code: 'null-error',
+        message: 'Host platform returned null value for non-null return value.',
+      );
+    } else {
+      return (pigeonVar_replyList[0] as List<Object?>?)!.cast<RecDotAccessory>();
+    }
+  }
+
+  Future<void> connect(String deviceId) async {
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.omi_pigeon.RecDotLinkHostAPI.connect$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[deviceId]);
+    final List<Object?>? pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+    if (pigeonVar_replyList == null) {
+      throw _createConnectionError(pigeonVar_channelName);
+    } else if (pigeonVar_replyList.length > 1) {
+      throw PlatformException(
+        code: pigeonVar_replyList[0]! as String,
+        message: pigeonVar_replyList[1] as String?,
+        details: pigeonVar_replyList[2],
+      );
+    } else {
+      return;
+    }
+  }
+
+  Future<void> disconnect(String deviceId) async {
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.omi_pigeon.RecDotLinkHostAPI.disconnect$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[deviceId]);
+    final List<Object?>? pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+    if (pigeonVar_replyList == null) {
+      throw _createConnectionError(pigeonVar_channelName);
+    } else if (pigeonVar_replyList.length > 1) {
+      throw PlatformException(
+        code: pigeonVar_replyList[0]! as String,
+        message: pigeonVar_replyList[1] as String?,
+        details: pigeonVar_replyList[2],
+      );
+    } else {
+      return;
+    }
+  }
+
+  /// Write raw bytes to the link. Completes once the platform accepted them.
+  Future<void> write(String deviceId, Uint8List bytes) async {
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.omi_pigeon.RecDotLinkHostAPI.write$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[deviceId, bytes]);
+    final List<Object?>? pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+    if (pigeonVar_replyList == null) {
+      throw _createConnectionError(pigeonVar_channelName);
+    } else if (pigeonVar_replyList.length > 1) {
+      throw PlatformException(
+        code: pigeonVar_replyList[0]! as String,
+        message: pigeonVar_replyList[1] as String?,
+        details: pigeonVar_replyList[2],
+      );
+    } else {
+      return;
+    }
+  }
+}
+
+/// Native → Dart events for the RecDot link.
+abstract class RecDotLinkFlutterAPI {
+  static const MessageCodec<Object?> pigeonChannelCodec = _PigeonCodec();
+
+  /// Raw bytes received from the link, in arrival order, unframed.
+  void onBytes(String deviceId, Uint8List bytes);
+
+  /// 'connecting' | 'connected' | 'disconnecting' | 'disconnected'.
+  void onConnectionStateChanged(String deviceId, String state);
+
+  /// The set of reachable accessories changed (connected or removed).
+  void onAccessoryListChanged();
+
+  static void setUp(
+    RecDotLinkFlutterAPI? api, {
+    BinaryMessenger? binaryMessenger,
+    String messageChannelSuffix = '',
+  }) {
+    messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
+    {
+      final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
+          'dev.flutter.pigeon.omi_pigeon.RecDotLinkFlutterAPI.onBytes$messageChannelSuffix', pigeonChannelCodec,
+          binaryMessenger: binaryMessenger);
+      if (api == null) {
+        pigeonVar_channel.setMessageHandler(null);
+      } else {
+        pigeonVar_channel.setMessageHandler((Object? message) async {
+          assert(message != null, 'Argument for dev.flutter.pigeon.omi_pigeon.RecDotLinkFlutterAPI.onBytes was null.');
+          final List<Object?> args = (message as List<Object?>?)!;
+          final String? arg_deviceId = (args[0] as String?);
+          assert(arg_deviceId != null,
+              'Argument for dev.flutter.pigeon.omi_pigeon.RecDotLinkFlutterAPI.onBytes was null, expected non-null String.');
+          final Uint8List? arg_bytes = (args[1] as Uint8List?);
+          assert(arg_bytes != null,
+              'Argument for dev.flutter.pigeon.omi_pigeon.RecDotLinkFlutterAPI.onBytes was null, expected non-null Uint8List.');
+          try {
+            api.onBytes(arg_deviceId!, arg_bytes!);
+            return wrapResponse(empty: true);
+          } on PlatformException catch (e) {
+            return wrapResponse(error: e);
+          } catch (e) {
+            return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
+          }
+        });
+      }
+    }
+    {
+      final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
+          'dev.flutter.pigeon.omi_pigeon.RecDotLinkFlutterAPI.onConnectionStateChanged$messageChannelSuffix',
+          pigeonChannelCodec,
+          binaryMessenger: binaryMessenger);
+      if (api == null) {
+        pigeonVar_channel.setMessageHandler(null);
+      } else {
+        pigeonVar_channel.setMessageHandler((Object? message) async {
+          assert(message != null,
+              'Argument for dev.flutter.pigeon.omi_pigeon.RecDotLinkFlutterAPI.onConnectionStateChanged was null.');
+          final List<Object?> args = (message as List<Object?>?)!;
+          final String? arg_deviceId = (args[0] as String?);
+          assert(arg_deviceId != null,
+              'Argument for dev.flutter.pigeon.omi_pigeon.RecDotLinkFlutterAPI.onConnectionStateChanged was null, expected non-null String.');
+          final String? arg_state = (args[1] as String?);
+          assert(arg_state != null,
+              'Argument for dev.flutter.pigeon.omi_pigeon.RecDotLinkFlutterAPI.onConnectionStateChanged was null, expected non-null String.');
+          try {
+            api.onConnectionStateChanged(arg_deviceId!, arg_state!);
+            return wrapResponse(empty: true);
+          } on PlatformException catch (e) {
+            return wrapResponse(error: e);
+          } catch (e) {
+            return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
+          }
+        });
+      }
+    }
+    {
+      final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
+          'dev.flutter.pigeon.omi_pigeon.RecDotLinkFlutterAPI.onAccessoryListChanged$messageChannelSuffix',
+          pigeonChannelCodec,
+          binaryMessenger: binaryMessenger);
+      if (api == null) {
+        pigeonVar_channel.setMessageHandler(null);
+      } else {
+        pigeonVar_channel.setMessageHandler((Object? message) async {
+          try {
+            api.onAccessoryListChanged();
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);

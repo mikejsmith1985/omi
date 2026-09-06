@@ -18,6 +18,7 @@ import 'package:omi/services/devices/connectors/rayban_meta_connection.dart';
 import 'package:omi/services/devices/transports/device_transport.dart';
 import 'package:omi/services/devices/transports/native_ble_transport.dart';
 import 'package:omi/services/devices/transports/rayban_meta_transport.dart';
+import 'package:omi/services/devices/transports/recdot_link_transport.dart';
 import 'package:omi/services/devices/transports/watch_transport.dart';
 import 'package:omi/utils/logger.dart';
 
@@ -121,13 +122,13 @@ class DeviceConnectionFactory {
         transport = RayBanMetaTransport(device.id);
         break;
 
-      // The viaim RecDot transports (External Accessory on iOS, RFCOMM on
-      // Android) and its connection land in the following commit; until then the
-      // discoverer does not yield a RecDot, so these arms are unreachable at
-      // runtime and exist only to keep the exhaustive switch honest.
+      // The viaim RecDot uses one Dart transport over the Pigeon accessory link;
+      // the native side differs by platform (External Accessory on iOS, RFCOMM on
+      // Android), which is why both locator kinds map to the same transport here.
       case TransportKind.externalAccessory:
       case TransportKind.bluetoothClassic:
-        throw UnimplementedError('viaim RecDot transport is added in the next change');
+        transport = RecDotLinkTransport(device.id);
+        break;
     }
 
     switch (device.type) {

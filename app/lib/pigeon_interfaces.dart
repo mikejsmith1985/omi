@@ -385,3 +385,56 @@ abstract class RayBanMetaFlutterAPI {
   void onCameraPermissionChanged(String status);
   void onError(String code, String message);
 }
+
+// =============================================================================
+// viaim RecDot link APIs
+// =============================================================================
+
+/// One viaim RecDot the platform can reach: an MFi External Accessory on iOS,
+/// or a bonded-and-connected Classic Bluetooth headset on Android.
+class RecDotAccessory {
+  final String deviceId;
+  final String name;
+  final String? serialNumber;
+  final String? firmwareRevision;
+
+  RecDotAccessory({required this.deviceId, required this.name, this.serialNumber, this.firmwareRevision});
+}
+
+/// Dart → native. The native side is a dumb byte pipe: it opens the link,
+/// writes exactly the bytes it is given, and forwards received bytes back.
+/// It never frames, retries, or interprets the STAROT protocol — that all
+/// lives in Dart above this. On iOS the link is an EASession on the
+/// com.vision.voyager protocol; on Android an RFCOMM socket on the SPP UUID.
+@HostApi()
+abstract class RecDotLinkHostAPI {
+  /// The RecDots reachable right now — iOS: connected accessories advertising
+  /// the protocol; Android: bonded, connected headsets that look like a RecDot.
+  @async
+  @SwiftFunction('listAccessories()')
+  List<RecDotAccessory> listAccessories();
+
+  @SwiftFunction('connect(deviceId:)')
+  void connect(String deviceId);
+
+  @SwiftFunction('disconnect(deviceId:)')
+  void disconnect(String deviceId);
+
+  /// Write raw bytes to the link. Completes once the platform accepted them.
+  @async
+  @SwiftFunction('write(deviceId:bytes:)')
+  void write(String deviceId, Uint8List bytes);
+}
+
+/// Native → Dart events for the RecDot link.
+@FlutterApi()
+abstract class RecDotLinkFlutterAPI {
+  /// Raw bytes received from the link, in arrival order, unframed.
+  void onBytes(String deviceId, Uint8List bytes);
+
+  /// 'connecting' | 'connected' | 'disconnecting' | 'disconnected'.
+  void onConnectionStateChanged(String deviceId, String state);
+
+  /// The set of reachable accessories changed (connected or removed).
+  void onAccessoryListChanged();
+}

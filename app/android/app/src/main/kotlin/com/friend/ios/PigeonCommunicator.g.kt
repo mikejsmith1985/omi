@@ -290,8 +290,10 @@ data class BleDeviceDiagnostics (
    * silent-failure path separately from established-then-dropped disconnects.
    */
   val failToConnectCount: Long,
-  /** BLE bytes consumed by native offline writers since the app most recently
-   * entered the background. These packets intentionally never reach Dart. */
+  /**
+   * BLE bytes consumed by native offline writers since the app most recently
+   * entered the background. These packets intentionally never reach Dart.
+   */
   val nativeBackgroundBytesConsumed: Long,
   /** BLE notification packets represented by [nativeBackgroundBytesConsumed]. */
   val nativeBackgroundPacketsConsumed: Long
@@ -399,6 +401,48 @@ data class BluetoothHfpInput (
 
   override fun hashCode(): Int = toList().hashCode()
 }
+
+/**
+ * One viaim RecDot the platform can reach: an MFi External Accessory on iOS,
+ * or a bonded-and-connected Classic Bluetooth headset on Android.
+ *
+ * Generated class from Pigeon that represents data sent in messages.
+ */
+data class RecDotAccessory (
+  val deviceId: String,
+  val name: String,
+  val serialNumber: String? = null,
+  val firmwareRevision: String? = null
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): RecDotAccessory {
+      val deviceId = pigeonVar_list[0] as String
+      val name = pigeonVar_list[1] as String
+      val serialNumber = pigeonVar_list[2] as String?
+      val firmwareRevision = pigeonVar_list[3] as String?
+      return RecDotAccessory(deviceId, name, serialNumber, firmwareRevision)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      deviceId,
+      name,
+      serialNumber,
+      firmwareRevision,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other !is RecDotAccessory) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    return PigeonCommunicatorPigeonUtils.deepEquals(toList(), other.toList())  }
+
+  override fun hashCode(): Int = toList().hashCode()
+}
 private open class PigeonCommunicatorPigeonCodec : StandardMessageCodec() {
   override fun readValueOfType(type: Byte, buffer: ByteBuffer): Any? {
     return when (type) {
@@ -437,6 +481,11 @@ private open class PigeonCommunicatorPigeonCodec : StandardMessageCodec() {
           BluetoothHfpInput.fromList(it)
         }
       }
+      136.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          RecDotAccessory.fromList(it)
+        }
+      }
       else -> super.readValueOfType(type, buffer)
     }
   }
@@ -468,6 +517,10 @@ private open class PigeonCommunicatorPigeonCodec : StandardMessageCodec() {
       }
       is BluetoothHfpInput -> {
         stream.write(135)
+        writeValue(stream, value.toList())
+      }
+      is RecDotAccessory -> {
+        stream.write(136)
         writeValue(stream, value.toList())
       }
       else -> super.writeValue(stream, value)
@@ -1935,6 +1988,179 @@ class RayBanMetaFlutterAPI(private val binaryMessenger: BinaryMessenger, private
     val channelName = "dev.flutter.pigeon.omi_pigeon.RayBanMetaFlutterAPI.onError$separatedMessageChannelSuffix"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
     channel.send(listOf(codeArg, messageArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else {
+          callback(Result.success(Unit))
+        }
+      } else {
+        callback(Result.failure(PigeonCommunicatorPigeonUtils.createConnectionError(channelName)))
+      } 
+    }
+  }
+}
+/**
+ * Dart → native. The native side is a dumb byte pipe: it opens the link,
+ * writes exactly the bytes it is given, and forwards received bytes back.
+ * It never frames, retries, or interprets the STAROT protocol — that all
+ * lives in Dart above this. On iOS the link is an EASession on the
+ * com.vision.voyager protocol; on Android an RFCOMM socket on the SPP UUID.
+ *
+ * Generated interface from Pigeon that represents a handler of messages from Flutter.
+ */
+interface RecDotLinkHostAPI {
+  /**
+   * The RecDots reachable right now — iOS: connected accessories advertising
+   * the protocol; Android: bonded, connected headsets that look like a RecDot.
+   */
+  fun listAccessories(callback: (Result<List<RecDotAccessory>>) -> Unit)
+  fun connect(deviceId: String)
+  fun disconnect(deviceId: String)
+  /** Write raw bytes to the link. Completes once the platform accepted them. */
+  fun write(deviceId: String, bytes: ByteArray, callback: (Result<Unit>) -> Unit)
+
+  companion object {
+    /** The codec used by RecDotLinkHostAPI. */
+    val codec: MessageCodec<Any?> by lazy {
+      PigeonCommunicatorPigeonCodec()
+    }
+    /** Sets up an instance of `RecDotLinkHostAPI` to handle messages through the `binaryMessenger`. */
+    @JvmOverloads
+    fun setUp(binaryMessenger: BinaryMessenger, api: RecDotLinkHostAPI?, messageChannelSuffix: String = "") {
+      val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.omi_pigeon.RecDotLinkHostAPI.listAccessories$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.listAccessories{ result: Result<List<RecDotAccessory>> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(PigeonCommunicatorPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(PigeonCommunicatorPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.omi_pigeon.RecDotLinkHostAPI.connect$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val deviceIdArg = args[0] as String
+            val wrapped: List<Any?> = try {
+              api.connect(deviceIdArg)
+              listOf(null)
+            } catch (exception: Throwable) {
+              PigeonCommunicatorPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.omi_pigeon.RecDotLinkHostAPI.disconnect$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val deviceIdArg = args[0] as String
+            val wrapped: List<Any?> = try {
+              api.disconnect(deviceIdArg)
+              listOf(null)
+            } catch (exception: Throwable) {
+              PigeonCommunicatorPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.omi_pigeon.RecDotLinkHostAPI.write$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val deviceIdArg = args[0] as String
+            val bytesArg = args[1] as ByteArray
+            api.write(deviceIdArg, bytesArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(PigeonCommunicatorPigeonUtils.wrapError(error))
+              } else {
+                reply.reply(PigeonCommunicatorPigeonUtils.wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+    }
+  }
+}
+/**
+ * Native → Dart events for the RecDot link.
+ *
+ * Generated class from Pigeon that represents Flutter messages that can be called from Kotlin.
+ */
+class RecDotLinkFlutterAPI(private val binaryMessenger: BinaryMessenger, private val messageChannelSuffix: String = "") {
+  companion object {
+    /** The codec used by RecDotLinkFlutterAPI. */
+    val codec: MessageCodec<Any?> by lazy {
+      PigeonCommunicatorPigeonCodec()
+    }
+  }
+  /** Raw bytes received from the link, in arrival order, unframed. */
+  fun onBytes(deviceIdArg: String, bytesArg: ByteArray, callback: (Result<Unit>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.omi_pigeon.RecDotLinkFlutterAPI.onBytes$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(deviceIdArg, bytesArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else {
+          callback(Result.success(Unit))
+        }
+      } else {
+        callback(Result.failure(PigeonCommunicatorPigeonUtils.createConnectionError(channelName)))
+      } 
+    }
+  }
+  /** 'connecting' | 'connected' | 'disconnecting' | 'disconnected'. */
+  fun onConnectionStateChanged(deviceIdArg: String, stateArg: String, callback: (Result<Unit>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.omi_pigeon.RecDotLinkFlutterAPI.onConnectionStateChanged$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(deviceIdArg, stateArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else {
+          callback(Result.success(Unit))
+        }
+      } else {
+        callback(Result.failure(PigeonCommunicatorPigeonUtils.createConnectionError(channelName)))
+      } 
+    }
+  }
+  /** The set of reachable accessories changed (connected or removed). */
+  fun onAccessoryListChanged(callback: (Result<Unit>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.omi_pigeon.RecDotLinkFlutterAPI.onAccessoryListChanged$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(null) {
       if (it is List<*>) {
         if (it.size > 1) {
           callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))

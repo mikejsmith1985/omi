@@ -99,6 +99,10 @@
 		BAADF00DF00DF00DF00DF0DA /* LimitlessFlashDrainEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAADF00DF00DF00DF00DF0D9 /* LimitlessFlashDrainEngine.swift */; };
 		BAADF00DF00DF00DF00DFC03 /* RayBanMetaAudioCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAADF00DF00DF00DF00DFC01 /* RayBanMetaAudioCapture.swift */; };
 		BAADF00DF00DF00DF00DFC04 /* RayBanMetaHostApiImpl.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAADF00DF00DF00DF00DFC02 /* RayBanMetaHostApiImpl.swift */; };
+		BAADF00DF00DF00DF00DFE03 /* RecDotStreamReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAADF00DF00DF00DF00DFE02 /* RecDotStreamReader.swift */; };
+		BAADF00DF00DF00DF00DFE04 /* RecDotLinkHostApiImpl.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAADF00DF00DF00DF00DFE01 /* RecDotLinkHostApiImpl.swift */; };
+		BAADF00DF00DF00DF00DFE05 /* RecDotStreamReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAADF00DF00DF00DF00DFE02 /* RecDotStreamReader.swift */; };
+		BAADF00DF00DF00DF00DFE06 /* RecDotLinkHostApiImpl.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAADF00DF00DF00DF00DFE01 /* RecDotLinkHostApiImpl.swift */; };
 		BAADF00DF00DF00DF00DFD11 /* PhoneMicPigeon.g.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAADF00DF00DF00DF00DFD01 /* PhoneMicPigeon.g.swift */; };
 		BAADF00DF00DF00DF00DFD12 /* PhoneMicController.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAADF00DF00DF00DF00DFD02 /* PhoneMicController.swift */; };
 		BAADF00DF00DF00DF00DFD13 /* PhoneMicCaptureEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAADF00DF00DF00DF00DFD03 /* PhoneMicCaptureEngine.swift */; };
@@ -262,6 +266,8 @@
 		BAADF00DF00DF00DF00DF0D9 /* LimitlessFlashDrainEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LimitlessFlashDrainEngine.swift; sourceTree = "<group>"; };
 		BAADF00DF00DF00DF00DFC01 /* RayBanMetaAudioCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RayBanMetaAudioCapture.swift; sourceTree = "<group>"; };
 		BAADF00DF00DF00DF00DFC02 /* RayBanMetaHostApiImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RayBanMetaHostApiImpl.swift; sourceTree = "<group>"; };
+		BAADF00DF00DF00DF00DFE01 /* RecDotLinkHostApiImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecDotLinkHostApiImpl.swift; sourceTree = "<group>"; };
+		BAADF00DF00DF00DF00DFE02 /* RecDotStreamReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecDotStreamReader.swift; sourceTree = "<group>"; };
 		BAADF00DF00DF00DF00DFD01 /* PhoneMicPigeon.g.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneMicPigeon.g.swift; sourceTree = "<group>"; };
 		BAADF00DF00DF00DF00DFD02 /* PhoneMicController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneMicController.swift; sourceTree = "<group>"; };
 		BAADF00DF00DF00DF00DFD03 /* PhoneMicCaptureEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneMicCaptureEngine.swift; sourceTree = "<group>"; };
@@ -466,6 +472,7 @@
 				42B17C7B2F69BC6600BFDA9D /* PigeonCommunicator.g.swift */,
 				BAADF00DF00DF00DF00DFB01 /* Ble */,
 				BAADF00DF00DF00DF00DFC00 /* RayBanMeta */,
+				BAADF00DF00DF00DF00DFE00 /* RecDot */,
 				BAADF00DF00DF00DF00DFB02 /* Batch */,
 				BAADF00DF00DF00DF00DFB03 /* Limitless */,
 				BAADF00DF00DF00DF00DFD00 /* PhoneMic */,
@@ -529,6 +536,15 @@
 				BAADF00DF00DF00DF00DFC02 /* RayBanMetaHostApiImpl.swift */,
 			);
 			path = RayBanMeta;
+			sourceTree = "<group>";
+		};
+		BAADF00DF00DF00DF00DFE00 /* RecDot */ = {
+			isa = PBXGroup;
+			children = (
+				BAADF00DF00DF00DF00DFE01 /* RecDotLinkHostApiImpl.swift */,
+				BAADF00DF00DF00DF00DFE02 /* RecDotStreamReader.swift */,
+			);
+			path = RecDot;
 			sourceTree = "<group>";
 		};
 		BAADF00DF00DF00DF00DFD00 /* PhoneMic */ = {
@@ -947,6 +963,8 @@
 				42B17C642F69B9E100BFDA9D /* BleHostApiImpl.swift in Sources */,
 				BAADF00DF00DF00DF00DFC03 /* RayBanMetaAudioCapture.swift in Sources */,
 				BAADF00DF00DF00DF00DFC04 /* RayBanMetaHostApiImpl.swift in Sources */,
+				BAADF00DF00DF00DF00DFE03 /* RecDotStreamReader.swift in Sources */,
+				BAADF00DF00DF00DF00DFE04 /* RecDotLinkHostApiImpl.swift in Sources */,
 				BAADF00DF00DF00DF00DFD11 /* PhoneMicPigeon.g.swift in Sources */,
 				BAADF00DF00DF00DF00DFD12 /* PhoneMicController.swift in Sources */,
 				BAADF00DF00DF00DF00DFD13 /* PhoneMicCaptureEngine.swift in Sources */,
@@ -992,6 +1010,8 @@
 				A99145F1E008BFA300A30BA0 /* BleHostApiImpl.swift in Sources */,
 				5FC8F848E2BD3FDF3AF27F37 /* RayBanMetaAudioCapture.swift in Sources */,
 				19570D5AA4C5B2E3154671BE /* RayBanMetaHostApiImpl.swift in Sources */,
+				BAADF00DF00DF00DF00DFE05 /* RecDotStreamReader.swift in Sources */,
+				BAADF00DF00DF00DF00DFE06 /* RecDotLinkHostApiImpl.swift in Sources */,
 				7C7857BB4A77A12B03F090B8 /* PhoneMicPigeon.g.swift in Sources */,
 				B13B18B781B8EFD4C7432C9F /* PhoneMicController.swift in Sources */,
 				6CFA84F577BF1940716EAC98 /* PhoneMicCaptureEngine.swift in Sources */,

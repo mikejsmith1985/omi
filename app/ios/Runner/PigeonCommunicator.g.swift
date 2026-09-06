@@ -425,6 +425,46 @@ struct BluetoothHfpInput: Hashable {
   }
 }
 
+/// One viaim RecDot the platform can reach: an MFi External Accessory on iOS,
+/// or a bonded-and-connected Classic Bluetooth headset on Android.
+///
+/// Generated class from Pigeon that represents data sent in messages.
+struct RecDotAccessory: Hashable {
+  var deviceId: String
+  var name: String
+  var serialNumber: String? = nil
+  var firmwareRevision: String? = nil
+
+
+  // swift-format-ignore: AlwaysUseLowerCamelCase
+  static func fromList(_ pigeonVar_list: [Any?]) -> RecDotAccessory? {
+    let deviceId = pigeonVar_list[0] as! String
+    let name = pigeonVar_list[1] as! String
+    let serialNumber: String? = nilOrValue(pigeonVar_list[2])
+    let firmwareRevision: String? = nilOrValue(pigeonVar_list[3])
+
+    return RecDotAccessory(
+      deviceId: deviceId,
+      name: name,
+      serialNumber: serialNumber,
+      firmwareRevision: firmwareRevision
+    )
+  }
+  func toList() -> [Any?] {
+    return [
+      deviceId,
+      name,
+      serialNumber,
+      firmwareRevision,
+    ]
+  }
+  static func == (lhs: RecDotAccessory, rhs: RecDotAccessory) -> Bool {
+    return deepEqualsPigeonCommunicator(lhs.toList(), rhs.toList())  }
+  func hash(into hasher: inout Hasher) {
+    deepHashPigeonCommunicator(value: toList(), hasher: &hasher)
+  }
+}
+
 private class PigeonCommunicatorPigeonCodecReader: FlutterStandardReader {
   override func readValue(ofType type: UInt8) -> Any? {
     switch type {
@@ -442,6 +482,8 @@ private class PigeonCommunicatorPigeonCodecReader: FlutterStandardReader {
       return RayBanMetaGlasses.fromList(self.readValue() as! [Any?])
     case 135:
       return BluetoothHfpInput.fromList(self.readValue() as! [Any?])
+    case 136:
+      return RecDotAccessory.fromList(self.readValue() as! [Any?])
     default:
       return super.readValue(ofType: type)
     }
@@ -470,6 +512,9 @@ private class PigeonCommunicatorPigeonCodecWriter: FlutterStandardWriter {
       super.writeValue(value.toList())
     } else if let value = value as? BluetoothHfpInput {
       super.writeByte(135)
+      super.writeValue(value.toList())
+    } else if let value = value as? RecDotAccessory {
+      super.writeByte(136)
       super.writeValue(value.toList())
     } else {
       super.writeValue(value)
@@ -1876,6 +1921,176 @@ class RayBanMetaFlutterAPI: RayBanMetaFlutterAPIProtocol {
     let channelName: String = "dev.flutter.pigeon.omi_pigeon.RayBanMetaFlutterAPI.onError\(messageChannelSuffix)"
     let channel = FlutterBasicMessageChannel(name: channelName, binaryMessenger: binaryMessenger, codec: codec)
     channel.sendMessage([codeArg, messageArg] as [Any?]) { response in
+      guard let listResponse = response as? [Any?] else {
+        completion(.failure(createConnectionError(withChannelName: channelName)))
+        return
+      }
+      if listResponse.count > 1 {
+        let code: String = listResponse[0] as! String
+        let message: String? = nilOrValue(listResponse[1])
+        let details: String? = nilOrValue(listResponse[2])
+        completion(.failure(PigeonError(code: code, message: message, details: details)))
+      } else {
+        completion(.success(()))
+      }
+    }
+  }
+}
+/// Dart → native. The native side is a dumb byte pipe: it opens the link,
+/// writes exactly the bytes it is given, and forwards received bytes back.
+/// It never frames, retries, or interprets the STAROT protocol — that all
+/// lives in Dart above this. On iOS the link is an EASession on the
+/// com.vision.voyager protocol; on Android an RFCOMM socket on the SPP UUID.
+///
+/// Generated protocol from Pigeon that represents a handler of messages from Flutter.
+protocol RecDotLinkHostAPI {
+  /// The RecDots reachable right now — iOS: connected accessories advertising
+  /// the protocol; Android: bonded, connected headsets that look like a RecDot.
+  func listAccessories(completion: @escaping (Result<[RecDotAccessory], Error>) -> Void)
+  func connect(deviceId: String) throws
+  func disconnect(deviceId: String) throws
+  /// Write raw bytes to the link. Completes once the platform accepted them.
+  func write(deviceId: String, bytes: FlutterStandardTypedData, completion: @escaping (Result<Void, Error>) -> Void)
+}
+
+/// Generated setup class from Pigeon to handle messages through the `binaryMessenger`.
+class RecDotLinkHostAPISetup {
+  static var codec: FlutterStandardMessageCodec { PigeonCommunicatorPigeonCodec.shared }
+  /// Sets up an instance of `RecDotLinkHostAPI` to handle messages through the `binaryMessenger`.
+  static func setUp(binaryMessenger: FlutterBinaryMessenger, api: RecDotLinkHostAPI?, messageChannelSuffix: String = "") {
+    let channelSuffix = messageChannelSuffix.count > 0 ? ".\(messageChannelSuffix)" : ""
+    /// The RecDots reachable right now — iOS: connected accessories advertising
+    /// the protocol; Android: bonded, connected headsets that look like a RecDot.
+    let listAccessoriesChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.omi_pigeon.RecDotLinkHostAPI.listAccessories\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      listAccessoriesChannel.setMessageHandler { _, reply in
+        api.listAccessories { result in
+          switch result {
+          case .success(let res):
+            reply(wrapResult(res))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      listAccessoriesChannel.setMessageHandler(nil)
+    }
+    let connectChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.omi_pigeon.RecDotLinkHostAPI.connect\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      connectChannel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let deviceIdArg = args[0] as! String
+        do {
+          try api.connect(deviceId: deviceIdArg)
+          reply(wrapResult(nil))
+        } catch {
+          reply(wrapError(error))
+        }
+      }
+    } else {
+      connectChannel.setMessageHandler(nil)
+    }
+    let disconnectChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.omi_pigeon.RecDotLinkHostAPI.disconnect\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      disconnectChannel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let deviceIdArg = args[0] as! String
+        do {
+          try api.disconnect(deviceId: deviceIdArg)
+          reply(wrapResult(nil))
+        } catch {
+          reply(wrapError(error))
+        }
+      }
+    } else {
+      disconnectChannel.setMessageHandler(nil)
+    }
+    /// Write raw bytes to the link. Completes once the platform accepted them.
+    let writeChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.omi_pigeon.RecDotLinkHostAPI.write\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      writeChannel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let deviceIdArg = args[0] as! String
+        let bytesArg = args[1] as! FlutterStandardTypedData
+        api.write(deviceId: deviceIdArg, bytes: bytesArg) { result in
+          switch result {
+          case .success:
+            reply(wrapResult(nil))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      writeChannel.setMessageHandler(nil)
+    }
+  }
+}
+/// Native → Dart events for the RecDot link.
+///
+/// Generated protocol from Pigeon that represents Flutter messages that can be called from Swift.
+protocol RecDotLinkFlutterAPIProtocol {
+  /// Raw bytes received from the link, in arrival order, unframed.
+  func onBytes(deviceId deviceIdArg: String, bytes bytesArg: FlutterStandardTypedData, completion: @escaping (Result<Void, PigeonError>) -> Void)
+  /// 'connecting' | 'connected' | 'disconnecting' | 'disconnected'.
+  func onConnectionStateChanged(deviceId deviceIdArg: String, state stateArg: String, completion: @escaping (Result<Void, PigeonError>) -> Void)
+  /// The set of reachable accessories changed (connected or removed).
+  func onAccessoryListChanged(completion: @escaping (Result<Void, PigeonError>) -> Void)
+}
+class RecDotLinkFlutterAPI: RecDotLinkFlutterAPIProtocol {
+  private let binaryMessenger: FlutterBinaryMessenger
+  private let messageChannelSuffix: String
+  init(binaryMessenger: FlutterBinaryMessenger, messageChannelSuffix: String = "") {
+    self.binaryMessenger = binaryMessenger
+    self.messageChannelSuffix = messageChannelSuffix.count > 0 ? ".\(messageChannelSuffix)" : ""
+  }
+  var codec: PigeonCommunicatorPigeonCodec {
+    return PigeonCommunicatorPigeonCodec.shared
+  }
+  /// Raw bytes received from the link, in arrival order, unframed.
+  func onBytes(deviceId deviceIdArg: String, bytes bytesArg: FlutterStandardTypedData, completion: @escaping (Result<Void, PigeonError>) -> Void) {
+    let channelName: String = "dev.flutter.pigeon.omi_pigeon.RecDotLinkFlutterAPI.onBytes\(messageChannelSuffix)"
+    let channel = FlutterBasicMessageChannel(name: channelName, binaryMessenger: binaryMessenger, codec: codec)
+    channel.sendMessage([deviceIdArg, bytesArg] as [Any?]) { response in
+      guard let listResponse = response as? [Any?] else {
+        completion(.failure(createConnectionError(withChannelName: channelName)))
+        return
+      }
+      if listResponse.count > 1 {
+        let code: String = listResponse[0] as! String
+        let message: String? = nilOrValue(listResponse[1])
+        let details: String? = nilOrValue(listResponse[2])
+        completion(.failure(PigeonError(code: code, message: message, details: details)))
+      } else {
+        completion(.success(()))
+      }
+    }
+  }
+  /// 'connecting' | 'connected' | 'disconnecting' | 'disconnected'.
+  func onConnectionStateChanged(deviceId deviceIdArg: String, state stateArg: String, completion: @escaping (Result<Void, PigeonError>) -> Void) {
+    let channelName: String = "dev.flutter.pigeon.omi_pigeon.RecDotLinkFlutterAPI.onConnectionStateChanged\(messageChannelSuffix)"
+    let channel = FlutterBasicMessageChannel(name: channelName, binaryMessenger: binaryMessenger, codec: codec)
+    channel.sendMessage([deviceIdArg, stateArg] as [Any?]) { response in
+      guard let listResponse = response as? [Any?] else {
+        completion(.failure(createConnectionError(withChannelName: channelName)))
+        return
+      }
+      if listResponse.count > 1 {
+        let code: String = listResponse[0] as! String
+        let message: String? = nilOrValue(listResponse[1])
+        let details: String? = nilOrValue(listResponse[2])
+        completion(.failure(PigeonError(code: code, message: message, details: details)))
+      } else {
+        completion(.success(()))
+      }
+    }
+  }
+  /// The set of reachable accessories changed (connected or removed).
+  func onAccessoryListChanged(completion: @escaping (Result<Void, PigeonError>) -> Void) {
+    let channelName: String = "dev.flutter.pigeon.omi_pigeon.RecDotLinkFlutterAPI.onAccessoryListChanged\(messageChannelSuffix)"
+    let channel = FlutterBasicMessageChannel(name: channelName, binaryMessenger: binaryMessenger, codec: codec)
+    channel.sendMessage(nil) { response in
       guard let listResponse = response as? [Any?] else {
         completion(.failure(createConnectionError(withChannelName: channelName)))
         return
