@@ -212,6 +212,9 @@ workflows:
 
       - name: Build ipa
         script: |
+          # Failed script steps keep no logUrl in the Codemagic API (only built-in steps do),
+          # so tee the build to a file published as an artifact — artifacts survive a failure.
+          set -o pipefail
           flutter build ipa \
             --release \
             --build-number="${OMI_BUILD_NUMBER}" \
@@ -219,8 +222,9 @@ workflows:
             --dart-define=OMI_APP_PROFILE=local_dev \
             --dart-define=OMI_API_BASE_URL="${OMI_API_BASE_URL}" \
             --dart-define=OMI_FIREBASE_AUTH_EMULATOR_HOST="${OMI_FIREBASE_AUTH_EMULATOR_HOST}" \
-            --export-options-plist=$HOME/export_options.plist
+            --export-options-plist=$HOME/export_options.plist 2>&1 | tee build_ipa.log
     artifacts:
+      - build_ipa.log
       - build/ios/ipa/*.ipa
       # dSYMs so a TestFlight crash arrives symbolicated. Without them the Runner
       # frames are bare addresses and there is no way to tell which statically linked
